@@ -56,8 +56,14 @@
       margin: 20px 0;
       letter-spacing: 0.5px;
     }
+    .logo-link {
+      display: block;
+      margin: 20px auto;
+    }
     .logo-link img {
-      width: 130px;
+      /* Xóa width cố định để hiển thị kích thước gốc của ảnh */
+      max-width: 100%;
+      height: auto;
       border-radius: 10px;
       box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
       transition: transform 0.3s ease;
@@ -91,7 +97,7 @@
   <div class="container">
     <div class="sub-title">KING OF NADFUN</div>
     <div class="title">DavidBacZit</div>
-    <img class="logo-center" src="Logo.jpg" alt="Logo Center" />
+    <img class="logo-center" src="logo.jpg" alt="Logo Center" />
     <div class="contract-address">
       CA: 0xc72470A975BbF0Fa0859A3bE027A1fB88dDB5479
     </div>
