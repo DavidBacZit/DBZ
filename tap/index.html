@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Spam Click Page</title>
+  <title>Connect Wallet Page</title>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
   <style>
@@ -16,41 +16,33 @@
       align-items: center;
       justify-content: center;
     }
-    #clickButton {
-      padding: 20px 40px;
-      font-size: 18px;
-      cursor: pointer;
-      margin-bottom: 20px;
-    }
-    #blockNumber {
-      font-size: 20px;
-    }
     #connectWallet {
       padding: 10px 20px;
       font-size: 16px;
-      margin-bottom: 20px;
       cursor: pointer;
+      margin-bottom: 20px;
+    }
+    #status {
+      font-size: 18px;
     }
   </style>
 </head>
 <body>
-  <button id="connectWallet">Connect Wallet</button>
-  <button id="clickButton">Spam Click</button>
-  <div id="blockNumber">Current Block: N/A</div>
+  <button id="connectWallet">Connected Wallet</button>
+  <div id="status">Status: Not connected</div>
 
   <script>
-    // Your contract's ABI: include at least the 'click' function.
+    // Your contract's ABI: include at least the functions you need.
     const contractABI = [
-      // Minimal ABI: change as needed
       "function click() public"
     ];
 
     // Replace with your deployed contract address
     const contractAddress = "0x4d62Ebd5EbD6a379fD43636D8752458eD8144c9a";
 
-    // Monad Testnet chain ID (in hex) and RPC URL (update if needed)
+    // Monad Testnet chain ID (in decimal) and RPC URL
     const CHAIN_ID = 10143;
-    const RPC_URL = "https://testnet-rpc.monad.xyz"; // Example RPC URL
+    const RPC_URL = "https://testnet-rpc.monad.xyz";
 
     // Web3Modal provider options using WalletConnect
     const providerOptions = {
@@ -71,7 +63,6 @@
     let contract;
     let ethersProvider;
 
-    // Initialize Web3Modal
     window.addEventListener("load", async () => {
       web3Modal = new window.Web3Modal.default({
         cacheProvider: false,
@@ -85,51 +76,19 @@
         provider = await web3Modal.connect();
         ethersProvider = new ethers.providers.Web3Provider(provider);
         signer = ethersProvider.getSigner();
-        // Check if connected to Monad Testnet
         const network = await ethersProvider.getNetwork();
         if (network.chainId !== CHAIN_ID) {
           alert("Please connect to Monad Testnet (Chain ID 10143)");
           return;
         }
         contract = new ethers.Contract(contractAddress, contractABI, signer);
-        alert("Wallet connected successfully!");
+        document.getElementById("status").innerText = "Status: Wallet connected!";
+        console.log("Wallet connected successfully!", contract);
       } catch (error) {
-        console.error("Could not connect to wallet", error);
+        console.error("Connection error:", error);
+        document.getElementById("status").innerText = "Status: Connection failed.";
       }
     });
-
-    document.getElementById("clickButton").addEventListener("click", async () => {
-      if (!contract) {
-        alert("Please connect your wallet first.");
-        return;
-      }
-      try {
-        // Call the contract's click function
-        const tx = await contract.click();
-        await tx.wait();
-        console.log("Click successful:", tx);
-      } catch (error) {
-        console.error("Error calling click function:", error);
-      }
-    });
-
-    // Function to update the block number displayed on the page
-    async function updateBlockNumber() {
-      if (!ethersProvider) {
-        document.getElementById("blockNumber").innerText = "Current Block: N/A";
-        return;
-      }
-      try {
-        const blockNumber = await ethersProvider.getBlockNumber();
-        document.getElementById("blockNumber").innerText = "Current Block: " + blockNumber;
-      } catch (error) {
-        console.error("Error fetching block number:", error);
-      }
-    }
-
-    // Update the block number every 10 seconds
-    setInterval(updateBlockNumber, 60000);
-    updateBlockNumber();
   </script>
 </body>
 </html>
