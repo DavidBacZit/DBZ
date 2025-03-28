@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Connect Wallet Page</title>
+  <title>Monad Testnet: Spam Click & Block Number</title>
   <!-- Ethers.js -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <!-- WalletConnect Provider -->
@@ -20,28 +20,34 @@
       align-items: center;
       justify-content: center;
     }
-    #connectWallet {
-      padding: 10px 20px;
+    button {
+      padding: 12px 24px;
       font-size: 16px;
       cursor: pointer;
-      margin-bottom: 20px;
+      margin: 10px;
     }
-    #status {
+    #status, #blockNumber {
       font-size: 18px;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
+  <!-- Connect Wallet Button -->
   <button id="connectWallet">Connect Wallet</button>
+  <!-- Spam Click Button -->
+  <button id="clickButton" disabled>Spam Click</button>
+  <!-- Block Number Display -->
+  <div id="blockNumber">Current Block: N/A</div>
   <div id="status">Status: Not connected</div>
 
   <script>
-    // Your contract's ABI (include necessary functions)
+    // Contract ABI (include at least the click() function)
     const contractABI = [
       "function click() public"
     ];
 
-    // Replace with your deployed contract address on Monad Testnet
+    // Contract address (deployed on Monad Testnet)
     const contractAddress = "0x4d62Ebd5EbD6a379fD43636D8752458eD8144c9a";
 
     // Monad Testnet chain ID (in decimal) and RPC URL
@@ -51,7 +57,6 @@
     // Web3Modal provider options using WalletConnect
     const providerOptions = {
       walletconnect: {
-        // Here we use the WalletConnectProvider from the global variable
         package: window.WalletConnectProvider.default,
         options: {
           rpc: {
@@ -65,9 +70,10 @@
     let web3Modal;
     let provider;
     let signer;
-    let contract;
     let ethersProvider;
+    let contract;
 
+    // Initialize Web3Modal on window load
     window.addEventListener("load", async () => {
       web3Modal = new window.Web3Modal.default({
         cacheProvider: false,
@@ -76,6 +82,7 @@
       });
     });
 
+    // Connect Wallet button event
     document.getElementById("connectWallet").addEventListener("click", async () => {
       try {
         provider = await web3Modal.connect();
@@ -88,12 +95,48 @@
         }
         contract = new ethers.Contract(contractAddress, contractABI, signer);
         document.getElementById("status").innerText = "Status: Wallet connected!";
+        // Enable the Spam Click button
+        document.getElementById("clickButton").disabled = false;
         console.log("Wallet connected successfully!", contract);
       } catch (error) {
         console.error("Connection error:", error);
         document.getElementById("status").innerText = "Status: Connection failed.";
       }
     });
+
+    // Spam Click button event
+    document.getElementById("clickButton").addEventListener("click", async () => {
+      if (!contract) {
+        alert("Please connect your wallet first.");
+        return;
+      }
+      try {
+        console.log("Calling contract.click()...");
+        const tx = await contract.click();
+        console.log("Transaction sent. Waiting for confirmation...", tx);
+        await tx.wait();
+        console.log("Click successful:", tx);
+      } catch (error) {
+        console.error("Error calling click function:", error);
+        alert("Error calling click function. Check console for details.");
+      }
+    });
+
+    // Update block number display every 10 seconds
+    async function updateBlockNumber() {
+      if (!ethersProvider) {
+        document.getElementById("blockNumber").innerText = "Current Block: N/A";
+        return;
+      }
+      try {
+        const blockNumber = await ethersProvider.getBlockNumber();
+        document.getElementById("blockNumber").innerText = "Current Block: " + blockNumber;
+      } catch (error) {
+        console.error("Error fetching block number:", error);
+      }
+    }
+    setInterval(updateBlockNumber, 10000);
+    updateBlockNumber();
   </script>
 </body>
 </html>
