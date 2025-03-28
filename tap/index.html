@@ -2,81 +2,110 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Monad Spam Click</title>
+  <title>Monad Testnet: Spam Click & Block Number</title>
+  <!-- Ethers.js -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <!-- WalletConnect Provider -->
   <script src="https://unpkg.com/@walletconnect/web3-provider@1.7.8/dist/umd/index.min.js"></script>
+  <!-- Web3Modal -->
   <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
   <style>
+    /* General styling and gradient background */
     body {
-      font-family: Arial, sans-serif;
-      background: linear-gradient(135deg, #dff7c6 0%, #fff8b0 100%);
       margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #dff7c6 0%, #fff8b0 100%);
       height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
+      position: relative;
+      color: #333;
     }
-    
-    /* Connect button (top-right) */
+    /* Top-right Connect Wallet Button */
     #connectWallet {
       position: absolute;
       top: 20px;
       right: 20px;
       padding: 10px 20px;
       font-size: 16px;
-      cursor: pointer;
       border: none;
-      background-color: #007bff;
-      color: white;
       border-radius: 5px;
-      transition: background 0.3s;
+      background-color: #007bff;
+      color: #fff;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
     }
     #connectWallet:hover {
       background-color: #0056b3;
     }
-
-    /* Click button (center, circular) */
+    /* Centered Circular Spam Click Button */
     #clickButton {
       width: 100px;
       height: 100px;
       border-radius: 50%;
+      border: none;
+      background-color: #ff5722;
+      color: #fff;
       font-size: 18px;
       font-weight: bold;
       cursor: pointer;
-      border: none;
-      background-color: #ff5722;
-      color: white;
-      box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
-      transition: background 0.3s, transform 0.1s;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      transition: transform 0.1s ease, background-color 0.3s ease;
     }
     #clickButton:active {
       background-color: #e64a19;
       transform: scale(0.95);
     }
-
-    /* Status and Block Number */
-    #status, #blockNumber {
+    /* Card Container for Status and Block Number */
+    .card {
+      margin-top: 40px;
+      padding: 20px 30px;
+      background: rgba(255,255,255,0.8);
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    .card h2 {
+      margin: 0 0 10px;
+      font-size: 20px;
+      color: #007bff;
+    }
+    .card p {
+      margin: 5px 0;
       font-size: 18px;
-      margin-top: 20px;
     }
   </style>
 </head>
 <body>
+  <!-- Connect Wallet Button (top-right) -->
   <button id="connectWallet">Connect Wallet</button>
+  
+  <!-- Centered Spam Click Button -->
   <button id="clickButton" disabled>Click</button>
-  <div id="blockNumber">Contract Block Number: N/A</div>
-  <div id="status">Status: Not connected</div>
-
+  
+  <!-- Card Container for Status and Contract Block Number -->
+  <div class="card">
+    <h2>Contract Info</h2>
+    <p id="blockNumber">Contract Block Number: N/A</p>
+    <p id="status">Status: Not connected</p>
+  </div>
+  
   <script>
+    // Contract ABI must include the click() function and a public getter for blocknumber()
     const contractABI = [
       "function click() public",
       "function blocknumber() public view returns (uint256)"
     ];
+    // Deployed contract address on Monad Testnet
     const contractAddress = "0x4d62Ebd5EbD6a379fD43636D8752458eD8144c9a";
+    // Monad Testnet configuration
     const CHAIN_ID = 10143;
     const RPC_URL = "https://testnet-rpc.monad.xyz";
-
+    
+    // Web3Modal provider options with WalletConnect
     const providerOptions = {
       walletconnect: {
         package: window.WalletConnectProvider.default,
@@ -86,9 +115,9 @@
         }
       }
     };
-
+    
     let web3Modal, provider, signer, ethersProvider, contract;
-
+    
     window.addEventListener("load", async () => {
       web3Modal = new window.Web3Modal.default({
         cacheProvider: false,
@@ -96,7 +125,8 @@
         theme: "light"
       });
     });
-
+    
+    // Connect Wallet button event
     document.getElementById("connectWallet").addEventListener("click", async () => {
       try {
         provider = await web3Modal.connect();
@@ -115,7 +145,8 @@
         document.getElementById("status").innerText = "Status: Connection failed.";
       }
     });
-
+    
+    // Spam Click button event
     document.getElementById("clickButton").addEventListener("click", async () => {
       if (!contract) {
         alert("Please connect your wallet first.");
@@ -130,7 +161,8 @@
         alert("Click failed. Check console for details.");
       }
     });
-
+    
+    // Poll contract for the blocknumber value every 60 seconds
     async function updateContractBlockNumber() {
       if (!contract) {
         document.getElementById("blockNumber").innerText = "Contract Block Number: N/A";
@@ -143,7 +175,7 @@
         console.error("Error fetching contract block number:", error);
       }
     }
-
+    // Update every 60 seconds
     setInterval(updateContractBlockNumber, 60000);
     updateContractBlockNumber();
   </script>
