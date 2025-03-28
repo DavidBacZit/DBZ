@@ -1,18 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Monad Testnet: Spam Click & Block Number</title>
-  <!-- Ethers.js -->
+  <meta charset="UTF-8">
+  <title>Monad Spam Click</title>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <!-- WalletConnect Provider -->
   <script src="https://unpkg.com/@walletconnect/web3-provider@1.7.8/dist/umd/index.min.js"></script>
-  <!-- Web3Modal -->
   <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background-color: #f2f2f2;
+      background: linear-gradient(135deg, #dff7c6 0%, #fff8b0 100%);
       margin: 0;
       height: 100vh;
       display: flex;
@@ -20,60 +17,78 @@
       align-items: center;
       justify-content: center;
     }
-    button {
-      padding: 12px 24px;
+    
+    /* Connect button (top-right) */
+    #connectWallet {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      padding: 10px 20px;
       font-size: 16px;
       cursor: pointer;
-      margin: 10px;
+      border: none;
+      background-color: #007bff;
+      color: white;
+      border-radius: 5px;
+      transition: background 0.3s;
     }
+    #connectWallet:hover {
+      background-color: #0056b3;
+    }
+
+    /* Click button (center, circular) */
+    #clickButton {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      border: none;
+      background-color: #ff5722;
+      color: white;
+      box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+      transition: background 0.3s, transform 0.1s;
+    }
+    #clickButton:active {
+      background-color: #e64a19;
+      transform: scale(0.95);
+    }
+
+    /* Status and Block Number */
     #status, #blockNumber {
       font-size: 18px;
-      margin-top: 10px;
+      margin-top: 20px;
     }
   </style>
 </head>
 <body>
-  <!-- Connect Wallet Button -->
   <button id="connectWallet">Connect Wallet</button>
-  <!-- Spam Click Button -->
-  <button id="clickButton" disabled>Spam Click</button>
-  <!-- Block Number Display -->
-  <div id="blockNumber">Current Block: N/A</div>
+  <button id="clickButton" disabled>Click</button>
+  <div id="blockNumber">Contract Block Number: N/A</div>
   <div id="status">Status: Not connected</div>
 
   <script>
-    // Contract ABI (include at least the click() function)
     const contractABI = [
-      "function click() public"
+      "function click() public",
+      "function blocknumber() public view returns (uint256)"
     ];
-
-    // Contract address (deployed on Monad Testnet)
     const contractAddress = "0x4d62Ebd5EbD6a379fD43636D8752458eD8144c9a";
-
-    // Monad Testnet chain ID (in decimal) and RPC URL
     const CHAIN_ID = 10143;
     const RPC_URL = "https://testnet-rpc.monad.xyz";
 
-    // Web3Modal provider options using WalletConnect
     const providerOptions = {
       walletconnect: {
         package: window.WalletConnectProvider.default,
         options: {
-          rpc: {
-            [CHAIN_ID]: RPC_URL
-          },
+          rpc: { [CHAIN_ID]: RPC_URL },
           chainId: CHAIN_ID
         }
       }
     };
 
-    let web3Modal;
-    let provider;
-    let signer;
-    let ethersProvider;
-    let contract;
+    let web3Modal, provider, signer, ethersProvider, contract;
 
-    // Initialize Web3Modal on window load
     window.addEventListener("load", async () => {
       web3Modal = new window.Web3Modal.default({
         cacheProvider: false,
@@ -82,7 +97,6 @@
       });
     });
 
-    // Connect Wallet button event
     document.getElementById("connectWallet").addEventListener("click", async () => {
       try {
         provider = await web3Modal.connect();
@@ -95,48 +109,43 @@
         }
         contract = new ethers.Contract(contractAddress, contractABI, signer);
         document.getElementById("status").innerText = "Status: Wallet connected!";
-        // Enable the Spam Click button
         document.getElementById("clickButton").disabled = false;
-        console.log("Wallet connected successfully!", contract);
       } catch (error) {
         console.error("Connection error:", error);
         document.getElementById("status").innerText = "Status: Connection failed.";
       }
     });
 
-    // Spam Click button event
     document.getElementById("clickButton").addEventListener("click", async () => {
       if (!contract) {
         alert("Please connect your wallet first.");
         return;
       }
       try {
-        console.log("Calling contract.click()...");
         const tx = await contract.click();
-        console.log("Transaction sent. Waiting for confirmation...", tx);
         await tx.wait();
         console.log("Click successful:", tx);
       } catch (error) {
         console.error("Error calling click function:", error);
-        alert("Error calling click function. Check console for details.");
+        alert("Click failed. Check console for details.");
       }
     });
 
-    // Update block number display every 10 seconds
-    async function updateBlockNumber() {
-      if (!ethersProvider) {
-        document.getElementById("blockNumber").innerText = "Current Block: N/A";
+    async function updateContractBlockNumber() {
+      if (!contract) {
+        document.getElementById("blockNumber").innerText = "Contract Block Number: N/A";
         return;
       }
       try {
-        const blockNumber = await ethersProvider.getBlockNumber();
-        document.getElementById("blockNumber").innerText = "Current Block: " + blockNumber;
+        const blockNum = await contract.blocknumber();
+        document.getElementById("blockNumber").innerText = "Contract Block Number: " + blockNum;
       } catch (error) {
-        console.error("Error fetching block number:", error);
+        console.error("Error fetching contract block number:", error);
       }
     }
-    setInterval(updateBlockNumber, 10000);
-    updateBlockNumber();
+
+    setInterval(updateContractBlockNumber, 60000);
+    updateContractBlockNumber();
   </script>
 </body>
 </html>
