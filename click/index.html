@@ -139,6 +139,7 @@
 </head>
 <body>
   <header>
+    <h1>DBZ Dashboard</h1>
     <button id="connectWallet">Connect Wallet</button>
   </header>
   <div class="container">
@@ -148,7 +149,7 @@
     <div class="card" id="infoCard">
       <h2>Contract Info</h2>
       <p id="clicksPerMON">Estimated MON per click: N/A</p>
-      <p id="timeRemaining">Time Remaining (s): N/A</p>
+      <p id="timeRemaining">Time Remaining: N/A</p>
       <div class="progress-container">
         <div class="progress-bar">
           <div class="progress" id="progressBar"></div>
@@ -165,7 +166,7 @@
       "function totalPoints() public view returns (uint256)",
       "function blocknumber() public view returns (uint256)"
     ];
-    // New contract address on Monad Testnet
+    // Contract address on Monad Testnet
     const contractAddress = "0x0f7C4CBF9d59522D5AC41988b84d2EA3812BC200";
     // Default configuration for user transactions (using default RPC)
     const CHAIN_ID = 10143;
@@ -234,6 +235,14 @@
       }
     });
     
+    // Helper function to format seconds into mm m ss s format
+    function formatTime(seconds) {
+      if (seconds < 0) seconds = 0;
+      const minutes = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return minutes + "m " + secs + "s";
+    }
+    
     // Update UI Function using dataProvider (Alchemy RPC)
     async function updateUI() {
       try {
@@ -248,7 +257,7 @@
         const blocksPassed = currentBlock - epochStart.toNumber();
         let progressPercent = Math.min((blocksPassed / 3600) * 100, 100);
         
-        // Fetch token balance for MON per click from the token contract
+        // Fetch token balance to calculate MON per click
         let pointsAwarded = "N/A";
         if (userAddress) {
           const tokenAddress = "0xc72470A975BbF0Fa0859A3bE027A1fB88dDB5479";
@@ -259,9 +268,8 @@
           pointsAwarded = balanceMON <= 25000 ? balanceMON : 50000;
         }
         
-        // Update UI elements
         document.getElementById("clicksPerMON").innerText = "Estimated MON per click: " + pointsAwarded;
-        document.getElementById("timeRemaining").innerText = "Time Remaining (s): " + remaining.toFixed(0);
+        document.getElementById("timeRemaining").innerText = "Time Remaining: " + formatTime(remaining);
         document.getElementById("progressBar").style.width = progressPercent + "%";
       } catch (error) {
         console.error("Error updating UI:", error);
