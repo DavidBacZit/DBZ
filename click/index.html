@@ -139,7 +139,6 @@
 </head>
 <body>
   <header>
-    <h1>DBZ Dashboard</h1>
     <button id="connectWallet">Connect Wallet</button>
   </header>
   <div class="container">
@@ -148,9 +147,7 @@
     <!-- Info Card -->
     <div class="card" id="infoCard">
       <h2>Contract Info</h2>
-      <p id="epochInfo">Epoch: N/A</p>
-      <p id="l2Block">Contract Block: N/A</p>
-      <p id="clicksPerMON">Estimated Clicks/MON: N/A</p>
+      <p id="clicksPerMON">Estimated MON per click: N/A</p>
       <p id="timeRemaining">Time Remaining (s): N/A</p>
       <div class="progress-container">
         <div class="progress-bar">
@@ -173,7 +170,7 @@
     // Default configuration for user transactions (using default RPC)
     const CHAIN_ID = 10143;
     const DEFAULT_RPC = "https://testnet-rpc.monad.xyz";
-    // Data requests use Alchemy RPC (MON) – values shown in MON units
+    // Data requests use Alchemy RPC – values shown in MON units
     const DATA_RPC = "https://monad-testnet.g.alchemy.com/v2/5Thr4k2sy9_DPVGyLkGGFoXjee0OdXPa";
     
     // Web3Modal provider options for user transactions (default RPC)
@@ -187,7 +184,7 @@
       }
     };
     
-    let web3Modal, provider, signer, ethersProvider, contract;
+    let web3Modal, provider, signer, ethersProvider, contract, userAddress = null;
     
     // Read-only provider using DATA_RPC for updating UI
     const dataProvider = new ethers.providers.JsonRpcProvider(DATA_RPC, CHAIN_ID);
@@ -209,9 +206,10 @@
         provider = await web3Modal.connect();
         ethersProvider = new ethers.providers.Web3Provider(provider);
         signer = ethersProvider.getSigner();
+        userAddress = await signer.getAddress();
         const network = await ethersProvider.getNetwork();
         if (network.chainId !== CHAIN_ID) {
-          alert("Please connect to Monad Testnet (Chain ID 10143)");
+          console.error("Wrong chain. Expected Monad Testnet (Chain ID 10143).");
           document.getElementById("connectWallet").innerText = "Connect Wallet";
           return;
         }
@@ -220,34 +218,26 @@
         document.getElementById("clickButton").disabled = false;
       } catch (error) {
         console.error("Connection error:", error);
-        alert("Connection failed. Check console for details.");
         document.getElementById("connectWallet").innerText = "Connect Wallet";
       }
     });
     
     // Spam Click Button Event – uses user's signer provider (default RPC)
     document.getElementById("clickButton").addEventListener("click", async () => {
-      if (!contract) {
-        alert("Please connect your wallet first.");
-        return;
-      }
+      if (!contract) return;
       try {
         const tx = await contract.click();
         await tx.wait();
         console.log("Click successful:", tx);
       } catch (error) {
         console.error("Error calling click():", error);
-        alert("Click failed. Check console for details.");
       }
     });
     
     // Update UI Function using dataProvider (Alchemy RPC)
     async function updateUI() {
-      if (!dataProvider) return;
       try {
         const epochStart = await contractData.epochStartBlock();
-        const totalPts = await contractData.totalPoints();
-        const l2Block = await contractData.blocknumber();
         const currentBlock = await dataProvider.getBlockNumber();
         
         // Calculate time remaining (in seconds)
@@ -258,9 +248,19 @@
         const blocksPassed = currentBlock - epochStart.toNumber();
         let progressPercent = Math.min((blocksPassed / 3600) * 100, 100);
         
-        document.getElementById("epochInfo").innerText = "Epoch: " + epochStart.toString();
-        document.getElementById("l2Block").innerText = "Contract Block: " + l2Block.toString();
-        document.getElementById("clicksPerMON").innerText = "Estimated Clicks/MON: " + totalPts.toString();
+        // Fetch token balance for MON per click from the token contract
+        let pointsAwarded = "N/A";
+        if (userAddress) {
+          const tokenAddress = "0xc72470A975BbF0Fa0859A3bE027A1fB88dDB5479";
+          const tokenABI = ["function balanceOf(address) view returns (uint256)"];
+          const tokenContract = new ethers.Contract(tokenAddress, tokenABI, dataProvider);
+          const balance = await tokenContract.balanceOf(userAddress);
+          const balanceMON = parseFloat(ethers.utils.formatUnits(balance, 18));
+          pointsAwarded = balanceMON <= 25000 ? balanceMON : 50000;
+        }
+        
+        // Update UI elements
+        document.getElementById("clicksPerMON").innerText = "Estimated MON per click: " + pointsAwarded;
         document.getElementById("timeRemaining").innerText = "Time Remaining (s): " + remaining.toFixed(0);
         document.getElementById("progressBar").style.width = progressPercent + "%";
       } catch (error) {
