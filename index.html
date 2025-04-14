@@ -1,124 +1,230 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>DavidBacZit</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StakeToken UI</title>
+  <!-- CSS Reset and Basic Styling -->
   <style>
-    * {
-      box-sizing: border-box;
-    }
     body {
+      background-color: #f0f0f0; /* Light gray background */
+      font-family: Arial, sans-serif;
       margin: 0;
       padding: 0;
-      font-family: 'Poppins', sans-serif;
-      background: linear-gradient(135deg, #dff7c6 0%, #fff8b0 100%);
-      background-size: cover;
-      text-align: center;
-      color: #333;
+      display: flex;
+      min-height: 100vh;
+      align-items: center;
+      justify-content: center;
     }
     .container {
-      max-width: 600px;
-      margin: 40px auto;
-      padding: 20px;
-      background: rgba(255, 255, 255, 0.8);
-      border-radius: 15px;
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      padding: 30px;
+      max-width: 500px;
+      width: 90%;
+      opacity: 0;
+      transform: scale(0.95);
+      animation: fadeIn 0.5s forwards;
     }
-    .sub-title {
-      font-size: 18px;
-      margin-bottom: 5px;
-      color: #af4261;
-      letter-spacing: 1px;
-      text-transform: uppercase;
+    h2, h3 {
+      text-align: center;
     }
-    .title {
-      font-size: 42px;
-      font-weight: 700;
-      margin-bottom: 25px;
+    .form-group {
+      margin-bottom: 20px;
+      text-align: center;
     }
-    .logo-center {
-      width: 280px;
-      border: 4px solid #af4261;
-      border-radius: 12px;
-      box-shadow: 0 6px 20px rgba(175, 66, 97, 0.4);
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    input[type="number"] {
+      padding: 10px;
+      width: 80%;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      transition: border-color 0.3s ease;
     }
-    .logo-center:hover {
-      transform: scale(1.05);
-      box-shadow: 0 8px 25px rgba(175, 66, 97, 0.6);
+    input[type="number"]:focus {
+      outline: none;
+      border-color: #888;
     }
-    .contract-address {
-      font-size: 16px;
-      margin: 20px 0;
-      letter-spacing: 0.5px;
+    button {
+      padding: 10px 20px;
+      border: none;
+      background-color: #007bff;
+      color: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, transform 0.2s ease;
     }
-    .logo-link {
-      display: block;
-      margin: 20px auto;
+    button:hover {
+      background-color: #0056b3;
+      transform: translateY(-2px);
     }
-    .logo-link img {
-      width: 120px;
-      height: auto;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-      transition: transform 0.3s ease;
+    p.status {
+      text-align: center;
+      font-weight: bold;
+      color: #333;
     }
-    .logo-link img:hover {
-      transform: scale(1.1);
-    }
-    .social-footer {
-      margin-top: 30px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-    .social-footer a {
-      margin: 0 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: transform 0.3s ease;
-    }
-    .social-footer a:hover {
-      transform: translateY(-5px);
-    }
-    .icon-x,
-    .fa-telegram {
-      width: 32px;
-      height: 32px;
-    }
-    .fa-telegram {
-      font-size: 32px;
-      color: #0088cc;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      line-height: 32px;
+    @keyframes fadeIn {
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
     }
   </style>
+
+  <!-- CDN Links for ethers.js, Web3Modal, and WalletConnectProvider -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script src="https://unpkg.com/web3modal@1.9.8/dist/index.js"></script>
+  <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
 </head>
 <body>
   <div class="container">
-    <div class="sub-title">KING OF NADFUN</div>
-    <div class="title">DavidBacZit</div>
-    <img class="logo-center" src="logo.jpg" alt="Logo Center" />
-    <div class="contract-address">
-      CA: 0xc72470A975BbF0Fa0859A3bE027A1fB88dDB5479
+    <h2>StakeToken UI</h2>
+    <div class="form-group" id="wallet-connection">
+      <button id="connect-wallet-btn">Connect Wallet</button>
+      <p id="wallet-address"></p>
     </div>
-    <a class="logo-link" href="https://testnet.nad.fun/tokens/0xc72470A975BbF0Fa0859A3bE027A1fB88dDB5479" target="_blank">
-      <img src="nadfun.png" alt="Logo 3" />
-    </a>
-    <div class="social-footer">
-      <a href="https://x.com/DavidBacZit" target="_blank" title="X">
-        <img class="icon-x" src="https://abs.twimg.com/favicons/twitter.3.ico" alt="X" />
-      </a>
-      <a href="https://t.me/DavidBacZit" target="_blank" title="Telegram">
-        <img class="icon-x" src="https://telegram.org/img/website_icon.svg?4" alt="Telegram" />
-      </a>
+    <p class="status" id="status">Disconnected</p>
+    <div class="form-group">
+      <h3>Stake Tokens</h3>
+      <input type="number" id="stake-amount" placeholder="Enter token amount to stake" />
+      <br /><br />
+      <button id="stake-btn">Stake</button>
+    </div>
+    <div class="form-group">
+      <h3>Unstake Tokens</h3>
+      <input type="number" id="unstake-amount" placeholder="Enter token amount to unstake" />
+      <br /><br />
+      <button id="unstake-btn">Unstake</button>
+    </div>
+    <div class="form-group">
+      <h3>Claim Reward</h3>
+      <button id="claim-btn">Claim Reward</button>
     </div>
   </div>
+
+  <script>
+    // Contract and network settings
+    const CONTRACT_ADDRESS = "0x8000075D0b47DdbCBE5D550Ef206377ea744A897";
+    const RPC_URL = "https://rpc-testnet.monad.xyz";
+    const CHAIN_ID = 10143;
+    
+    // Minimal ABI for our contract functions
+    const StakeTokenABI = [
+      {
+        "inputs": [{ "internalType": "uint256", "name": "amount", "type": "uint256" }],
+        "name": "stakeTokens",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [{ "internalType": "uint256", "name": "amount", "type": "uint256" }],
+        "name": "unstakeTokens",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "claimTokenReward",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      }
+    ];
+
+    // Setup Web3Modal with WalletConnect provider option
+    let provider;
+    let signer;
+    let contract;
+    let web3Modal;
+    
+    const providerOptions = {
+      walletconnect: {
+        package: window.WalletConnectProvider.default,
+        options: {
+          rpc: { [CHAIN_ID]: RPC_URL },
+          chainId: CHAIN_ID,
+        }
+      }
+    };
+    
+    web3Modal = new window.Web3Modal.default({
+      network: "custom",
+      cacheProvider: true,
+      providerOptions,
+    });
+    
+    const statusEl = document.getElementById("status");
+    const walletAddressEl = document.getElementById("wallet-address");
+    
+    async function connectWallet() {
+      try {
+        const instance = await web3Modal.connect();
+        provider = new ethers.providers.Web3Provider(instance);
+        signer = provider.getSigner();
+        const address = await signer.getAddress();
+        walletAddressEl.textContent = "Connected: " + address;
+        statusEl.textContent = "Wallet connected";
+        contract = new ethers.Contract(CONTRACT_ADDRESS, StakeTokenABI, signer);
+      } catch (error) {
+        console.error("Wallet connection error:", error);
+        statusEl.textContent = "Error connecting wallet";
+      }
+    }
+    
+    async function stakeTokens() {
+      const stakeAmount = document.getElementById("stake-amount").value;
+      if (!contract || !stakeAmount) return;
+      try {
+        statusEl.textContent = "Staking tokens...";
+        const amount = ethers.utils.parseUnits(stakeAmount, 18);
+        const tx = await contract.stakeTokens(amount);
+        await tx.wait();
+        statusEl.textContent = "Stake successful!";
+      } catch (error) {
+        console.error("Error staking tokens:", error);
+        statusEl.textContent = "Error staking tokens";
+      }
+    }
+    
+    async function unstakeTokens() {
+      const unstakeAmount = document.getElementById("unstake-amount").value;
+      if (!contract || !unstakeAmount) return;
+      try {
+        statusEl.textContent = "Unstaking tokens...";
+        const amount = ethers.utils.parseUnits(unstakeAmount, 18);
+        const tx = await contract.unstakeTokens(amount);
+        await tx.wait();
+        statusEl.textContent = "Unstake successful!";
+      } catch (error) {
+        console.error("Error unstaking tokens:", error);
+        statusEl.textContent = "Error unstaking tokens";
+      }
+    }
+    
+    async function claimReward() {
+      if (!contract) return;
+      try {
+        statusEl.textContent = "Claiming reward...";
+        const tx = await contract.claimTokenReward();
+        await tx.wait();
+        statusEl.textContent = "Claim successful!";
+      } catch (error) {
+        console.error("Error claiming reward:", error);
+        statusEl.textContent = "Error claiming reward";
+      }
+    }
+    
+    document.getElementById("connect-wallet-btn").addEventListener("click", connectWallet);
+    document.getElementById("stake-btn").addEventListener("click", stakeTokens);
+    document.getElementById("unstake-btn").addEventListener("click", unstakeTokens);
+    document.getElementById("claim-btn").addEventListener("click", claimReward);
+    
+    // Auto connect if wallet was previously connected
+    if (web3Modal.cachedProvider) {
+      connectWallet();
+    }
+  </script>
 </body>
 </html>
