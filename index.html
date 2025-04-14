@@ -28,12 +28,27 @@
     h2 {
       text-align: center;
       color: #333;
-      margin-bottom: 20px;
+      margin-bottom: 10px;
     }
     h3 {
       text-align: center;
       color: #555;
       margin-bottom: 15px;
+    }
+    .stats-box {
+      border: 1px solid #eee;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 25px;
+      background: #f9f9f9;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.03);
+    }
+    .stats-box p {
+      margin: 6px 0;
+      font-weight: 600;
+      color: #333;
+      font-size: 16px;
+      text-align: center;
     }
     .form-group {
       margin-bottom: 25px;
@@ -60,7 +75,7 @@
       border-radius: 6px;
       cursor: pointer;
       transition: background-color 0.3s ease, transform 0.2s ease;
-      margin: 10px 5px 0;
+      margin-top: 10px;
     }
     button:hover {
       background-color: #0056b3;
@@ -71,20 +86,21 @@
       font-size: 14px;
       padding: 10px 15px;
       margin-left: 8px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, transform 0.2s ease;
     }
     .max-btn:hover {
       background-color: #1e7e34;
+      transform: translateY(-2px);
     }
-    p.status, p.stats {
+    .wallet-connect {
       text-align: center;
-      font-weight: 600;
-      color: #333;
-      margin-top: 10px;
+      margin-bottom: 20px;
     }
-    .stats-box {
-      border-top: 1px solid #ddd;
-      padding-top: 20px;
-      margin-top: 20px;
+    .hidden {
+      display: none;
     }
     @keyframes fadeIn {
       from {
@@ -104,22 +120,29 @@
 </head>
 <body>
   <div class="container">
-    <h2>DBZ Staking Dashboard</h2>
-    <div class="form-group" id="wallet-connection">
+    <!-- Stats Section at the top -->
+    <div class="stats-box">
+      <h2>Staking Stats</h2>
+      <p id="staked-info">Your Staked: - DBZ</p>
+      <p id="wallet-balance-info">Your Wallet Balance: - DBZ</p>
+      <p id="apr-info">APR: - %</p>
+      <button id="refresh-stats-btn">Refresh Stats</button>
+    </div>
+    
+    <!-- Wallet Connect Section (hidden after connection) -->
+    <div class="wallet-connect" id="wallet-connection">
       <button id="connect-wallet-btn">Connect Wallet</button>
-      <p id="wallet-address"></p>
     </div>
     <p class="status" id="status">Disconnected</p>
-
-    <!-- Approval Section is now integrated with Stake -->
+    
     <!-- Stake Section -->
     <div class="form-group">
       <h3>Stake DBZ Tokens</h3>
       <input type="number" id="stake-amount" placeholder="Enter amount to stake" />
       <button class="max-btn" id="stake-max-btn">Max</button>
       <br />
-      <!-- When stake is triggered, it will check allowance and auto-approve if needed -->
-      <button id="stake-btn">Approve & Stake</button>
+      <!-- This button now is labeled "Stake" -->
+      <button id="stake-btn">Stake</button>
     </div>
     
     <!-- Unstake Section -->
@@ -135,14 +158,6 @@
     <div class="form-group">
       <h3>Claim Reward</h3>
       <button id="claim-btn">Claim Reward</button>
-    </div>
-    
-    <!-- Stats Section -->
-    <div class="stats-box">
-      <p class="stats" id="staked-info">Your Staked: -</p>
-      <p class="stats" id="wallet-balance-info">Your Wallet Balance: -</p>
-      <p class="stats" id="apr-info">APR: -%</p>
-      <button id="refresh-stats-btn">Refresh Stats</button>
     </div>
   </div>
 
@@ -227,9 +242,9 @@
     });
 
     const statusEl = document.getElementById("status");
-    const walletAddressEl = document.getElementById("wallet-address");
+    const walletConnectSection = document.getElementById("wallet-connection");
 
-    // Attempt network switch to Monad Testnet if required
+    // Attempt network switch to Monad Testnet if needed
     async function switchToMonadTestnet() {
       try {
         await provider.provider.request({
@@ -251,8 +266,8 @@
           await switchToMonadTestnet();
         }
         signer = provider.getSigner();
-        const address = await signer.getAddress();
-        walletAddressEl.textContent = "Connected: " + address;
+        // Hide the wallet connection section once connected
+        walletConnectSection.classList.add("hidden");
         statusEl.textContent = "Wallet connected";
         contract = new ethers.Contract(CONTRACT_ADDRESS, StakeTokenABI, signer);
         tokenContract = new ethers.Contract(TOKEN_ADDRESS, ERC20ABI, signer);
@@ -265,7 +280,7 @@
       }
     }
 
-    // Approve tokens if needed then stake
+    // Check allowance and auto-approve if needed before staking
     async function approveAndStake() {
       const stakeAmountInput = document.getElementById("stake-amount").value;
       if (!contract || !stakeAmountInput) return;
@@ -273,18 +288,17 @@
       const stakeAmount = ethers.utils.parseUnits(stakeAmountInput, 18);
       const address = await signer.getAddress();
       
-      // Check current allowance for the staking contract
+      // Get current allowance for the staking contract
       const currentAllowance = await tokenContract.allowance(address, CONTRACT_ADDRESS);
       if (currentAllowance.lt(stakeAmount)) {
-        // If not enough allowance, get wallet balance and approve full balance
+        // If allowance is not sufficient, approve full wallet balance as allowance
         const walletBalance = await tokenContract.balanceOf(address);
         statusEl.textContent = "Approving DBZ tokens...";
         const txApprove = await tokenContract.approve(CONTRACT_ADDRESS, walletBalance);
         await txApprove.wait();
         statusEl.textContent = "Approval successful!";
       }
-      
-      // Now proceed to stake
+      // Now perform staking
       stakeTokens();
     }
 
@@ -392,7 +406,7 @@
       }
     }
 
-    // Set unstake input to the maximum available (min of staked amount and contract token balance)
+    // Set unstake input to maximum available (min of staked amount and contract token balance)
     async function setMaxUnstake() {
       try {
         const stakedAmount = await getStakedAmount();
@@ -404,9 +418,9 @@
       }
     }
 
-    // Event listeners
+    // Event Listeners
     document.getElementById("connect-wallet-btn").addEventListener("click", connectWallet);
-    // Combined approve & stake
+    // Stake button now combines approval and staking
     document.getElementById("stake-btn").addEventListener("click", approveAndStake);
     document.getElementById("unstake-btn").addEventListener("click", unstakeTokens);
     document.getElementById("claim-btn").addEventListener("click", claimReward);
