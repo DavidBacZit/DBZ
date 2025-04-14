@@ -4,10 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>DBZ Staking Dashboard</title>
-  <!-- Enhanced Styling -->
+  <!-- Enhanced and refined styling -->
   <style>
+    /* Background & Typography */
     body {
-      background: linear-gradient(135deg, #ece9e6, #ffffff);
+      background: linear-gradient(135deg, #e0eafc, #cfdef3);
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       margin: 0;
       padding: 20px;
@@ -16,66 +17,75 @@
       align-items: center;
       min-height: 100vh;
     }
+    /* Main container styling */
     .container {
-      background: #ffffff;
-      border-radius: 12px;
-      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-      padding: 30px;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 12px 25px rgba(0, 0, 0, 0.1);
+      padding: 40px 30px;
       max-width: 600px;
       width: 100%;
       animation: fadeIn 0.6s ease-out forwards;
     }
-    h2 {
+    /* Header */
+    .header {
       text-align: center;
+      margin-bottom: 30px;
+    }
+    .header h1 {
+      font-size: 28px;
+      margin: 0;
       color: #333;
-      margin-bottom: 10px;
     }
-    h3 {
-      text-align: center;
-      color: #555;
-      margin-bottom: 15px;
-    }
+    /* Stats box on top */
     .stats-box {
-      border: 1px solid #eee;
-      border-radius: 8px;
+      background: #f7f9fc;
+      border-radius: 12px;
       padding: 20px;
-      margin-bottom: 25px;
-      background: #f9f9f9;
-      box-shadow: inset 0 2px 4px rgba(0,0,0,0.03);
+      margin-bottom: 30px;
+      border: 1px solid #e3eaf0;
+      box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.03);
     }
     .stats-box p {
-      margin: 6px 0;
+      margin: 8px 0;
+      font-size: 16px;
       font-weight: 600;
       color: #333;
-      font-size: 16px;
       text-align: center;
     }
+    /* Form group styling */
     .form-group {
-      margin-bottom: 25px;
+      margin-bottom: 30px;
       text-align: center;
+    }
+    .form-group h3 {
+      margin-bottom: 15px;
+      font-size: 20px;
+      color: #444;
     }
     input[type="number"] {
       padding: 12px;
       width: 60%;
-      border: 2px solid #ddd;
-      border-radius: 6px;
-      transition: border-color 0.3s ease;
       font-size: 16px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      transition: border-color 0.3s ease;
+      text-align: center;
     }
     input[type="number"]:focus {
       outline: none;
       border-color: #007bff;
     }
     button {
-      padding: 12px 25px;
+      padding: 12px 30px;
+      font-size: 16px;
       border: none;
+      border-radius: 8px;
       background-color: #007bff;
       color: #fff;
-      font-size: 16px;
-      border-radius: 6px;
       cursor: pointer;
       transition: background-color 0.3s ease, transform 0.2s ease;
-      margin-top: 10px;
+      margin-top: 15px;
     }
     button:hover {
       background-color: #0056b3;
@@ -83,13 +93,13 @@
     }
     .max-btn {
       background-color: #28a745;
-      font-size: 14px;
       padding: 10px 15px;
       margin-left: 8px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
+      font-size: 14px;
+      border-radius: 8px;
       transition: background-color 0.3s ease, transform 0.2s ease;
+      cursor: pointer;
+      border: none;
     }
     .max-btn:hover {
       background-color: #1e7e34;
@@ -112,23 +122,31 @@
         transform: scale(1);
       }
     }
+    /* Status message styling */
+    .status {
+      text-align: center;
+      font-weight: 600;
+      color: #333;
+      margin-top: 10px;
+    }
   </style>
-  <!-- CDN Links for ethers.js, Web3Modal, and WalletConnectProvider -->
+  <!-- CDN Links: ethers.js, Web3Modal, WalletConnectProvider -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <script src="https://unpkg.com/web3modal@1.9.8/dist/index.js"></script>
   <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
 </head>
 <body>
   <div class="container">
-    <!-- Stats Section at the top -->
+    <!-- Header Section -->
+    <div class="header">
+      <h1>DBZ Staking Dashboard</h1>
+    </div>
+    <!-- Stats Section (moved to top) -->
     <div class="stats-box">
-      <h2>Staking Stats</h2>
       <p id="staked-info">Your Staked: - DBZ</p>
       <p id="wallet-balance-info">Your Wallet Balance: - DBZ</p>
       <p id="apr-info">APR: - %</p>
-      <button id="refresh-stats-btn">Refresh Stats</button>
     </div>
-    
     <!-- Wallet Connect Section (hidden after connection) -->
     <div class="wallet-connect" id="wallet-connection">
       <button id="connect-wallet-btn">Connect Wallet</button>
@@ -141,7 +159,7 @@
       <input type="number" id="stake-amount" placeholder="Enter amount to stake" />
       <button class="max-btn" id="stake-max-btn">Max</button>
       <br />
-      <!-- This button now is labeled "Stake" -->
+      <!-- Button now labeled "Stake" -->
       <button id="stake-btn">Stake</button>
     </div>
     
@@ -170,7 +188,7 @@
     // DBZ token address
     const TOKEN_ADDRESS = "0x070deA104E73d3513b7D04389101A90413ae1Da8";
 
-    // Minimal ABI for StakeToken functions (staking functions and getters)
+    // Minimal ABI for StakeToken (staking functions and getters)
     const StakeTokenABI = [
       {
         "inputs": [{ "internalType": "uint256", "name": "amount", "type": "uint256" }],
@@ -266,9 +284,9 @@
           await switchToMonadTestnet();
         }
         signer = provider.getSigner();
-        // Hide the wallet connection section once connected
+        // Hide wallet connection section after successful connection
         walletConnectSection.classList.add("hidden");
-        statusEl.textContent = "Wallet connected";
+        statusEl.textContent = "";
         contract = new ethers.Contract(CONTRACT_ADDRESS, StakeTokenABI, signer);
         tokenContract = new ethers.Contract(TOKEN_ADDRESS, ERC20ABI, signer);
         refreshStats();
@@ -280,7 +298,7 @@
       }
     }
 
-    // Check allowance and auto-approve if needed before staking
+    // Check allowance and automatically approve if needed, then stake
     async function approveAndStake() {
       const stakeAmountInput = document.getElementById("stake-amount").value;
       if (!contract || !stakeAmountInput) return;
@@ -288,17 +306,16 @@
       const stakeAmount = ethers.utils.parseUnits(stakeAmountInput, 18);
       const address = await signer.getAddress();
       
-      // Get current allowance for the staking contract
+      // Get current allowance
       const currentAllowance = await tokenContract.allowance(address, CONTRACT_ADDRESS);
       if (currentAllowance.lt(stakeAmount)) {
-        // If allowance is not sufficient, approve full wallet balance as allowance
+        // Approve using the full wallet balance
         const walletBalance = await tokenContract.balanceOf(address);
         statusEl.textContent = "Approving DBZ tokens...";
         const txApprove = await tokenContract.approve(CONTRACT_ADDRESS, walletBalance);
         await txApprove.wait();
-        statusEl.textContent = "Approval successful!";
       }
-      // Now perform staking
+      // Now stake tokens
       stakeTokens();
     }
 
@@ -348,14 +365,14 @@
       }
     }
 
-    // Get DBZ token balance of connected wallet
+    // Get DBZ token wallet balance
     async function getWalletTokenBalance() {
       const address = await signer.getAddress();
       const balance = await tokenContract.balanceOf(address);
       return ethers.utils.formatUnits(balance, 18);
     }
 
-    // Get staked amount from the staking contract for the connected user
+    // Get staked amount from the contract
     async function getStakedAmount() {
       const address = await signer.getAddress();
       const staker = await contract.tokenStakers(address);
@@ -396,7 +413,7 @@
       }
     }
 
-    // Set stake input to maximum available (wallet balance)
+    // Set max stake input to wallet balance
     async function setMaxStake() {
       try {
         const walletBal = await getWalletTokenBalance();
@@ -406,7 +423,7 @@
       }
     }
 
-    // Set unstake input to maximum available (min of staked amount and contract token balance)
+    // Set max unstake input to the minimum of staked amount and contract balance
     async function setMaxUnstake() {
       try {
         const stakedAmount = await getStakedAmount();
@@ -420,13 +437,11 @@
 
     // Event Listeners
     document.getElementById("connect-wallet-btn").addEventListener("click", connectWallet);
-    // Stake button now combines approval and staking
     document.getElementById("stake-btn").addEventListener("click", approveAndStake);
     document.getElementById("unstake-btn").addEventListener("click", unstakeTokens);
     document.getElementById("claim-btn").addEventListener("click", claimReward);
     document.getElementById("stake-max-btn").addEventListener("click", setMaxStake);
     document.getElementById("unstake-max-btn").addEventListener("click", setMaxUnstake);
-    document.getElementById("refresh-stats-btn").addEventListener("click", refreshStats);
 
     // Auto-connect if wallet was previously connected
     if (web3Modal.cachedProvider) {
