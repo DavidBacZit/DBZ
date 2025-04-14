@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>StakeToken UI</title>
-  <!-- CSS Reset and Basic Styling -->
+  <!-- Basic styling with subtle animation effects -->
   <style>
     body {
       background-color: #f0f0f0; /* Light gray background */
@@ -21,7 +21,7 @@
       border-radius: 8px;
       box-shadow: 0 4px 6px rgba(0,0,0,0.1);
       padding: 30px;
-      max-width: 500px;
+      max-width: 600px;
       width: 90%;
       opacity: 0;
       transform: scale(0.95);
@@ -36,7 +36,7 @@
     }
     input[type="number"] {
       padding: 10px;
-      width: 80%;
+      width: 60%;
       border: 1px solid #ccc;
       border-radius: 4px;
       transition: border-color 0.3s ease;
@@ -53,15 +53,27 @@
       border-radius: 4px;
       cursor: pointer;
       transition: background-color 0.3s ease, transform 0.2s ease;
+      margin-left: 10px;
     }
     button:hover {
       background-color: #0056b3;
       transform: translateY(-2px);
     }
-    p.status {
+    .max-btn {
+      padding: 10px;
+      margin-left: 5px;
+      font-size: 0.9em;
+      background-color: #28a745;
+    }
+    p.status, p.stats {
       text-align: center;
       font-weight: bold;
       color: #333;
+    }
+    .stats-box {
+      border-top: 1px solid #ddd;
+      padding-top: 15px;
+      margin-top: 15px;
     }
     @keyframes fadeIn {
       to {
@@ -70,7 +82,6 @@
       }
     }
   </style>
-
   <!-- CDN Links for ethers.js, Web3Modal, and WalletConnectProvider -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <script src="https://unpkg.com/web3modal@1.9.8/dist/index.js"></script>
@@ -84,31 +95,46 @@
       <p id="wallet-address"></p>
     </div>
     <p class="status" id="status">Disconnected</p>
+    <!-- Stake Section -->
     <div class="form-group">
       <h3>Stake Tokens</h3>
       <input type="number" id="stake-amount" placeholder="Enter token amount to stake" />
+      <button class="max-btn" id="stake-max-btn">Max</button>
       <br /><br />
       <button id="stake-btn">Stake</button>
     </div>
+    <!-- Unstake Section -->
     <div class="form-group">
       <h3>Unstake Tokens</h3>
       <input type="number" id="unstake-amount" placeholder="Enter token amount to unstake" />
+      <button class="max-btn" id="unstake-max-btn">Max</button>
       <br /><br />
       <button id="unstake-btn">Unstake</button>
     </div>
+    <!-- Claim Reward Section -->
     <div class="form-group">
       <h3>Claim Reward</h3>
       <button id="claim-btn">Claim Reward</button>
     </div>
+    <!-- Stats Section -->
+    <div class="stats-box">
+      <p class="stats" id="staked-info">Your Staked: -</p>
+      <p class="stats" id="wallet-balance-info">Your Wallet Balance: -</p>
+      <p class="stats" id="apr-info">APR: -%</p>
+      <button id="refresh-stats-btn">Refresh Stats</button>
+    </div>
   </div>
 
   <script>
-    // Contract and network settings
+    // Network and contract settings
     const CONTRACT_ADDRESS = "0x8000075D0b47DdbCBE5D550Ef206377ea744A897";
     const RPC_URL = "https://rpc-testnet.monad.xyz";
-    const CHAIN_ID = 10143;
+    const CHAIN_ID = 10143; // Monad Testnet
+
+    // The staking contract uses an ERC20 token at a different address:
+    const TOKEN_ADDRESS = "0x070deA104E73d3513b7D04389101A90413ae1Da8";
     
-    // Minimal ABI for our contract functions
+    // Minimal ABI for StakeToken functions
     const StakeTokenABI = [
       {
         "inputs": [{ "internalType": "uint256", "name": "amount", "type": "uint256" }],
@@ -130,15 +156,40 @@
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
+      },
+      // Getter for staker info (returns [amount, rewardDebt, pending])
+      {
+        "inputs": [{ "internalType": "address", "name": "", "type": "address" }],
+        "name": "tokenStakers",
+        "outputs": [
+          { "internalType": "uint256", "name": "amount", "type": "uint256" },
+          { "internalType": "uint256", "name": "rewardDebt", "type": "uint256" },
+          { "internalType": "uint256", "name": "pending", "type": "uint256" }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      // Getter for total staked tokens in the system
+      {
+        "inputs": [],
+        "name": "totalTokenStaked",
+        "outputs": [
+          { "internalType": "uint256", "name": "", "type": "uint256" }
+        ],
+        "stateMutability": "view",
+        "type": "function"
       }
     ];
 
-    // Setup Web3Modal with WalletConnect provider option
-    let provider;
-    let signer;
-    let contract;
+    // Minimal ERC20 ABI for balanceOf and decimals
+    const ERC20ABI = [
+      "function balanceOf(address owner) view returns (uint256)",
+      "function decimals() view returns (uint8)"
+    ];
+
+    // Setup Web3Modal with WalletConnect provider
+    let provider, signer, contract, tokenContract;
     let web3Modal;
-    
     const providerOptions = {
       walletconnect: {
         package: window.WalletConnectProvider.default,
@@ -148,31 +199,53 @@
         }
       }
     };
-    
+
     web3Modal = new window.Web3Modal.default({
       network: "custom",
       cacheProvider: true,
       providerOptions,
     });
-    
+
     const statusEl = document.getElementById("status");
     const walletAddressEl = document.getElementById("wallet-address");
-    
+
+    async function switchToMonadTestnet() {
+      try {
+        // Wallets using the new EIP-3326 method
+        await provider.provider.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: "0x" + CHAIN_ID.toString(16) }],
+        });
+      } catch (error) {
+        console.error("Network switch error:", error);
+        statusEl.textContent = "Please switch your network manually to Monad Testnet.";
+      }
+    }
+
     async function connectWallet() {
       try {
         const instance = await web3Modal.connect();
         provider = new ethers.providers.Web3Provider(instance);
+        // Check network and switch if necessary
+        const network = await provider.getNetwork();
+        if (network.chainId !== CHAIN_ID) {
+          await switchToMonadTestnet();
+        }
         signer = provider.getSigner();
         const address = await signer.getAddress();
         walletAddressEl.textContent = "Connected: " + address;
         statusEl.textContent = "Wallet connected";
+        // Initialize staking contract and ERC20 token contract instances
         contract = new ethers.Contract(CONTRACT_ADDRESS, StakeTokenABI, signer);
+        tokenContract = new ethers.Contract(TOKEN_ADDRESS, ERC20ABI, signer);
+        // Refresh statistics immediately
+        refreshStats();
       } catch (error) {
         console.error("Wallet connection error:", error);
         statusEl.textContent = "Error connecting wallet";
       }
     }
-    
+
     async function stakeTokens() {
       const stakeAmount = document.getElementById("stake-amount").value;
       if (!contract || !stakeAmount) return;
@@ -182,12 +255,13 @@
         const tx = await contract.stakeTokens(amount);
         await tx.wait();
         statusEl.textContent = "Stake successful!";
+        refreshStats();
       } catch (error) {
         console.error("Error staking tokens:", error);
         statusEl.textContent = "Error staking tokens";
       }
     }
-    
+
     async function unstakeTokens() {
       const unstakeAmount = document.getElementById("unstake-amount").value;
       if (!contract || !unstakeAmount) return;
@@ -197,12 +271,13 @@
         const tx = await contract.unstakeTokens(amount);
         await tx.wait();
         statusEl.textContent = "Unstake successful!";
+        refreshStats();
       } catch (error) {
         console.error("Error unstaking tokens:", error);
         statusEl.textContent = "Error unstaking tokens";
       }
     }
-    
+
     async function claimReward() {
       if (!contract) return;
       try {
@@ -210,17 +285,97 @@
         const tx = await contract.claimTokenReward();
         await tx.wait();
         statusEl.textContent = "Claim successful!";
+        refreshStats();
       } catch (error) {
         console.error("Error claiming reward:", error);
         statusEl.textContent = "Error claiming reward";
       }
     }
-    
+
+    // Get the ERC20 token balance of the connected wallet
+    async function getWalletTokenBalance() {
+      const address = await signer.getAddress();
+      const balance = await tokenContract.balanceOf(address);
+      return ethers.utils.formatUnits(balance, 18);
+    }
+
+    // Get staked amount from the staking contract for the connected user
+    async function getStakedAmount() {
+      const address = await signer.getAddress();
+      const staker = await contract.tokenStakers(address);
+      // staker.amount is a BigNumber with 18 decimals
+      return ethers.utils.formatUnits(staker.amount, 18);
+    }
+
+    // Get the ERC20 token balance held by the staking contract (to check for liquidity)
+    async function getContractTokenBalance() {
+      const balance = await tokenContract.balanceOf(CONTRACT_ADDRESS);
+      return ethers.utils.formatUnits(balance, 18);
+    }
+
+    // Compute APR: APR (%) = 3784320000000 / (total staked tokens)
+    async function getAPR() {
+      try {
+        const totalStakedBN = await contract.totalTokenStaked();
+        if (totalStakedBN.isZero()) return "0";
+        // Convert BigNumber to string in token units with 18 decimals
+        const totalStaked = parseFloat(ethers.utils.formatUnits(totalStakedBN, 18));
+        const apr = 3784320000000 / totalStaked;
+        return apr.toFixed(2);
+      } catch (error) {
+        console.error("Error computing APR:", error);
+        return "-";
+      }
+    }
+
+    // Refresh the staking statistics display
+    async function refreshStats() {
+      if (!signer || !contract || !tokenContract) return;
+      try {
+        const staked = await getStakedAmount();
+        const walletBal = await getWalletTokenBalance();
+        const apr = await getAPR();
+        document.getElementById("staked-info").textContent = "Your Staked: " + staked + " tokens";
+        document.getElementById("wallet-balance-info").textContent = "Your Wallet Balance: " + walletBal + " tokens";
+        document.getElementById("apr-info").textContent = "APR: " + apr + " %";
+      } catch (error) {
+        console.error("Error refreshing stats:", error);
+      }
+    }
+
+    // Set stake input to maximum available (wallet balance)
+    async function setMaxStake() {
+      try {
+        const walletBal = await getWalletTokenBalance();
+        // Parse to float and set max value (rounding down is an option)
+        document.getElementById("stake-amount").value = parseFloat(walletBal).toFixed(4);
+      } catch (error) {
+        console.error("Error fetching wallet balance for max stake:", error);
+      }
+    }
+
+    // Set unstake input to the maximum available: min(staked amount, contract’s token balance)
+    async function setMaxUnstake() {
+      try {
+        const stakedAmount = await getStakedAmount();
+        const contractBal = await getContractTokenBalance();
+        // Calculate minimum value between the two numbers
+        const maxUnstake = Math.min(parseFloat(stakedAmount), parseFloat(contractBal));
+        document.getElementById("unstake-amount").value = maxUnstake.toFixed(4);
+      } catch (error) {
+        console.error("Error fetching amounts for max unstake:", error);
+      }
+    }
+
+    // Event listeners
     document.getElementById("connect-wallet-btn").addEventListener("click", connectWallet);
     document.getElementById("stake-btn").addEventListener("click", stakeTokens);
     document.getElementById("unstake-btn").addEventListener("click", unstakeTokens);
     document.getElementById("claim-btn").addEventListener("click", claimReward);
-    
+    document.getElementById("stake-max-btn").addEventListener("click", setMaxStake);
+    document.getElementById("unstake-max-btn").addEventListener("click", setMaxUnstake);
+    document.getElementById("refresh-stats-btn").addEventListener("click", refreshStats);
+
     // Auto connect if wallet was previously connected
     if (web3Modal.cachedProvider) {
       connectWallet();
