@@ -32,7 +32,7 @@
       color: #333;
       margin-bottom: 10px;
     }
-    /* Disconnect Button (visible after connect) */
+    /* Disconnect Button */
     #disconnect-btn {
       margin-top: 5px;
       padding: 8px 16px;
@@ -129,6 +129,7 @@
       <p id="staked-info">Your Staked: - DBZ</p>
       <p id="wallet-balance-info">Your Wallet Balance: - DBZ</p>
       <p id="apr-info">APR: - %</p>
+      <p id="lock-countdown">Lock Countdown: -</p>
     </div>
     
     <!-- Wallet Connection Area -->
@@ -164,14 +165,14 @@
 
   <script>
     // Network & Contract Settings
-    const CONTRACT_ADDRESS = "0x28eBAcAEe96c43a4eCB1F73469eF46E12A42565b";
+    const CONTRACT_ADDRESS = "0x28eBAcAEe96c43a4eCB1F73469eF46E12A42565b"; // Updated stake contract address
     const RPC_URL = "https://rpc-testnet.monad.xyz";
     const CHAIN_ID = 10143; // Monad Testnet
 
     // DBZ Token Address
-    const TOKEN_ADDRESS = "0xBDD06C151F94817B6B316C1a05e14282FA0Bd44b";
+    const TOKEN_ADDRESS = "0xBDD06C151F94817B6B316C1a05e14282FA0Bd44b"; // Updated token address
 
-    // Minimal ABI for the staking contract
+    // Minimal ABI for the staking contract (with lock functionality)
     const StakeTokenABI = [
       {
         "inputs": [{"internalType": "uint256","name": "amount","type": "uint256"}],
@@ -200,7 +201,8 @@
         "outputs": [
           {"internalType": "uint256","name": "amount","type": "uint256"},
           {"internalType": "uint256","name": "rewardDebt","type": "uint256"},
-          {"internalType": "uint256","name": "pending","type": "uint256"}
+          {"internalType": "uint256","name": "pending","type": "uint256"},
+          {"internalType": "uint256","name": "unlockTime","type": "uint256"}
         ],
         "stateMutability": "view",
         "type": "function"
@@ -281,6 +283,7 @@
         tokenContract = new ethers.Contract(TOKEN_ADDRESS, ERC20ABI, signer);
         refreshGeneralStats();
         setInterval(refreshGeneralStats, 60000);
+        setInterval(updateLockCountdown, 1000);
       } catch (err) {
         console.error("Error connecting wallet:", err);
         statusEl.textContent = "Error connecting wallet";
@@ -388,7 +391,10 @@
     async function getStakedInfo() {
       const addr = await signer.getAddress();
       const staker = await contract.tokenStakers(addr);
-      return { staked: customRound(ethers.utils.formatUnits(staker.amount, 18)) };
+      return { 
+        staked: customRound(ethers.utils.formatUnits(staker.amount, 18)),
+        unlockTime: staker.unlockTime.toNumber() // assume unlockTime in seconds
+      };
     }
 
     async function getAPR() {
@@ -396,7 +402,7 @@
         const totalStakedBN = await contract.totalTokenStaked();
         if (totalStakedBN.isZero()) return "0.00";
         const totalStaked = parseFloat(ethers.utils.formatUnits(totalStakedBN, 18));
-        return customRound(17280000000 / totalStaked);
+        return customRound(3784320000000 / totalStaked);
       } catch (err) {
         console.error("Error calculating APR:", err);
         return "-";
@@ -417,6 +423,34 @@
       }
     }
 
+    // Update lock countdown every second
+    async function updateLockCountdown() {
+      if (!signer || !contract) return;
+      try {
+        const stakedData = await getStakedInfo();
+        const currentTime = Math.floor(Date.now() / 1000);
+        const remaining = stakedData.unlockTime - currentTime;
+        let displayText = "";
+        if (remaining > 0) {
+          displayText = formatTime(remaining);
+        } else {
+          displayText = "Unlocked";
+        }
+        document.getElementById("lock-countdown").textContent = "Lock Countdown: " + displayText;
+      } catch (err) {
+        console.error("Error updating lock countdown:", err);
+      }
+    }
+
+    // Helper function to format seconds into "D days, HH:MM:SS"
+    function formatTime(seconds) {
+      const d = Math.floor(seconds / (3600 * 24));
+      const h = Math.floor((seconds % (3600 * 24)) / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      const s = seconds % 60;
+      return `${d} days, ${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+    }
+
     async function setMaxStake() {
       try {
         const walletBal = await getWalletBalance();
@@ -433,12 +467,6 @@
       } catch (err) {
         console.error("Error setting max unstake:", err);
       }
-    }
-
-    // Custom rounding function: rounds to two decimals then subtracts 0.01
-    function customRound(value) {
-      const rounded = parseFloat(value).toFixed(2);
-      return (parseFloat(rounded) - 0.01).toFixed(2);
     }
 
     // Event Listeners
