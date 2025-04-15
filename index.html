@@ -4,11 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>DBZ Staking Dashboard</title>
-  <!-- Refined UI Styling -->
   <style>
     /* Global Styles */
     body {
-      background: linear-gradient(135deg, #e0eafc, #cfdef3);
+      background: #f4f8fb;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       margin: 0;
       padding: 20px;
@@ -17,163 +16,124 @@
       align-items: center;
       min-height: 100vh;
     }
-    /* Main container card */
+    /* Main Container */
     .container {
       background: #fff;
-      border-radius: 16px;
-      box-shadow: 0 12px 25px rgba(0, 0, 0, 0.1);
-      padding: 40px 30px;
-      max-width: 600px;
+      border-radius: 12px;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+      padding: 30px;
+      max-width: 480px;
       width: 100%;
-      animation: fadeIn 0.6s ease-out forwards;
+      text-align: center;
     }
     /* Header */
-    .header {
-      text-align: center;
-      margin-bottom: 30px;
-    }
-    .header h1 {
-      font-size: 28px;
+    h1 {
+      font-size: 24px;
       color: #333;
-      margin: 0;
+      margin: 0 0 20px;
     }
     /* Stats Card */
-    .stats-box {
-      background: #f7f9fc;
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 30px;
-      border: 1px solid #e3eaf0;
-      box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.03);
-    }
-    .stats-box p {
-      margin: 8px 0;
-      font-size: 16px;
-      font-weight: 600;
+    .stats {
+      background: #f1f5f9;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+      font-size: 15px;
       color: #333;
-      text-align: center;
     }
-    /* Form Group Styles */
-    .form-group {
-      margin-bottom: 30px;
-      text-align: center;
+    .stats p {
+      margin: 6px 0;
     }
-    .form-group h3 {
-      margin-bottom: 15px;
-      font-size: 20px;
-      color: #444;
+    /* Form Group */
+    .group {
+      margin-bottom: 20px;
     }
     input[type="number"] {
-      padding: 12px;
-      width: 60%;
-      font-size: 16px;
-      border: 2px solid #ddd;
-      border-radius: 8px;
-      transition: border-color 0.3s ease;
+      padding: 10px;
+      width: 70%;
+      font-size: 15px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
       text-align: center;
     }
-    input[type="number"]:focus {
-      outline: none;
-      border-color: #007bff;
-    }
     button {
-      padding: 12px 30px;
-      font-size: 16px;
+      margin-top: 10px;
+      padding: 10px 20px;
+      font-size: 15px;
       border: none;
-      border-radius: 8px;
-      background-color: #007bff;
+      border-radius: 6px;
+      background: #007bff;
       color: #fff;
       cursor: pointer;
-      transition: background-color 0.3s ease, transform 0.2s ease;
-      margin-top: 15px;
+      transition: background 0.25s, transform 0.2s;
     }
     button:hover {
-      background-color: #0056b3;
+      background: #0056b3;
       transform: translateY(-2px);
     }
     .max-btn {
-      background-color: #28a745;
-      padding: 10px 15px;
       margin-left: 8px;
+      padding: 8px 12px;
+      background: #28a745;
       font-size: 14px;
-      border-radius: 8px;
-      cursor: pointer;
-      border: none;
-      transition: background-color 0.3s ease, transform 0.2s ease;
+      border-radius: 6px;
     }
     .max-btn:hover {
-      background-color: #1e7e34;
-      transform: translateY(-2px);
+      background: #1e7e34;
     }
-    /* Wallet connect section */
-    .wallet-connect {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    .hidden {
-      display: none;
-    }
-    /* Status message styling */
+    /* Wallet Connect area */
+    #wallet-connection { margin-bottom: 15px; }
+    .hidden { display: none; }
+    /* Status Message */
     .status {
-      text-align: center;
-      font-weight: 600;
-      color: #333;
+      font-size: 14px;
+      color: #555;
+      min-height: 20px;
       margin-top: 10px;
-      min-height: 24px;
-    }
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: scale(0.95);
-      }
-      to {
-        opacity: 1;
-        transform: scale(1);
-      }
     }
   </style>
-  <!-- CDN Libraries: ethers.js, Web3Modal, WalletConnectProvider -->
+  <!-- CDN Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <script src="https://unpkg.com/web3modal@1.9.8/dist/index.js"></script>
   <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
 </head>
 <body>
   <div class="container">
-    <!-- Header Section -->
-    <div class="header">
-      <h1>DBZ Staking Dashboard</h1>
-    </div>
+    <h1>DBZ Staking Dashboard</h1>
+    
     <!-- Stats Card -->
-    <div class="stats-box">
+    <div class="stats">
       <p id="staked-info">Your Staked: - DBZ</p>
-      <p id="pending-info">Pending Reward: - DBZ</p>
       <p id="wallet-balance-info">Your Wallet Balance: - DBZ</p>
       <p id="apr-info">APR: - %</p>
     </div>
-    <!-- Wallet Connect Section (hidden after connection) -->
-    <div class="wallet-connect" id="wallet-connection">
+    
+    <!-- Wallet Connect Button (hidden after connection) -->
+    <div id="wallet-connection">
       <button id="connect-wallet-btn">Connect Wallet</button>
     </div>
     <p class="status" id="status">Disconnected</p>
+    
     <!-- Stake Section -->
-    <div class="form-group">
-      <h3>Stake DBZ Tokens</h3>
-      <input type="number" id="stake-amount" placeholder="Enter amount to stake" />
+    <div class="group">
+      <h3>Stake Tokens</h3>
+      <input type="number" id="stake-amount" placeholder="Amount to stake" />
       <button class="max-btn" id="stake-max-btn">Max</button>
       <br />
-      <!-- Single Stake button (auto handles approval if necessary) -->
       <button id="stake-btn">Stake</button>
     </div>
+    
     <!-- Unstake Section -->
-    <div class="form-group">
-      <h3>Unstake DBZ Tokens</h3>
-      <input type="number" id="unstake-amount" placeholder="Enter amount to unstake" />
+    <div class="group">
+      <h3>Unstake Tokens</h3>
+      <input type="number" id="unstake-amount" placeholder="Amount to unstake" />
       <button class="max-btn" id="unstake-max-btn">Max</button>
       <br />
       <button id="unstake-btn">Unstake</button>
     </div>
+    
     <!-- Claim Reward Section -->
-    <div class="form-group">
+    <div class="group">
       <h3>Claim Reward</h3>
       <button id="claim-btn">Claim Reward</button>
     </div>
@@ -188,17 +148,17 @@
     // DBZ Token Address
     const TOKEN_ADDRESS = "0x070deA104E73d3513b7D04389101A90413ae1Da8";
 
-    // Minimal ABI for StakeToken (staking functions and getters)
+    // Minimal ABI for the staking contract
     const StakeTokenABI = [
       {
-        "inputs": [{ "internalType": "uint256", "name": "amount", "type": "uint256" }],
+        "inputs": [{"internalType": "uint256","name": "amount","type": "uint256"}],
         "name": "stakeTokens",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
       },
       {
-        "inputs": [{ "internalType": "uint256", "name": "amount", "type": "uint256" }],
+        "inputs": [{"internalType": "uint256","name": "amount","type": "uint256"}],
         "name": "unstakeTokens",
         "outputs": [],
         "stateMutability": "nonpayable",
@@ -212,12 +172,12 @@
         "type": "function"
       },
       {
-        "inputs": [{ "internalType": "address", "name": "", "type": "address" }],
+        "inputs": [{"internalType": "address","name": "","type": "address"}],
         "name": "tokenStakers",
         "outputs": [
-          { "internalType": "uint256", "name": "amount", "type": "uint256" },
-          { "internalType": "uint256", "name": "rewardDebt", "type": "uint256" },
-          { "internalType": "uint256", "name": "pending", "type": "uint256" }
+          {"internalType": "uint256","name": "amount","type": "uint256"},
+          {"internalType": "uint256","name": "rewardDebt","type": "uint256"},
+          {"internalType": "uint256","name": "pending","type": "uint256"}
         ],
         "stateMutability": "view",
         "type": "function"
@@ -225,15 +185,13 @@
       {
         "inputs": [],
         "name": "totalTokenStaked",
-        "outputs": [
-          { "internalType": "uint256", "name": "", "type": "uint256" }
-        ],
+        "outputs": [{"internalType": "uint256","name": "","type": "uint256"}],
         "stateMutability": "view",
         "type": "function"
       }
     ];
 
-    // Minimal ERC20 ABI for DBZ Token
+    // Minimal ERC20 ABI for the token
     const ERC20ABI = [
       "function balanceOf(address owner) view returns (uint256)",
       "function decimals() view returns (uint8)",
@@ -246,10 +204,7 @@
     const providerOptions = {
       walletconnect: {
         package: window.WalletConnectProvider.default,
-        options: {
-          rpc: { [CHAIN_ID]: RPC_URL },
-          chainId: CHAIN_ID,
-        }
+        options: { rpc: { [CHAIN_ID]: RPC_URL }, chainId: CHAIN_ID }
       }
     };
 
@@ -260,23 +215,21 @@
     });
 
     const statusEl = document.getElementById("status");
-    const walletConnectSection = document.getElementById("wallet-connection");
+    const walletSection = document.getElementById("wallet-connection");
 
-    // Helper function to round to two decimals (as string)
-    function roundToTwo(value) {
-      return parseFloat(value).toFixed(2);
-    }
+    // Utility: round to two decimals
+    const round2 = (value) => parseFloat(value).toFixed(2);
 
-    // Attempt network switch to Monad Testnet if needed
+    // Switch to Monad Testnet if necessary
     async function switchToMonadTestnet() {
       try {
         await provider.provider.request({
           method: "wallet_switchEthereumChain",
-          params: [{ chainId: "0x" + CHAIN_ID.toString(16) }],
+          params: [{ chainId: "0x" + CHAIN_ID.toString(16) }]
         });
-      } catch (error) {
-        console.error("Network switch error:", error);
-        statusEl.textContent = "Please switch your network manually to Monad Testnet.";
+      } catch (err) {
+        console.error("Network switch error:", err);
+        statusEl.textContent = "Please switch to Monad Testnet.";
       }
     }
 
@@ -285,90 +238,71 @@
         const instance = await web3Modal.connect();
         provider = new ethers.providers.Web3Provider(instance);
         const network = await provider.getNetwork();
-        if (network.chainId !== CHAIN_ID) {
-          await switchToMonadTestnet();
-        }
+        if (network.chainId !== CHAIN_ID) await switchToMonadTestnet();
         signer = provider.getSigner();
-        // Hide the wallet connect section after successful connection
-        walletConnectSection.classList.add("hidden");
+        // Hide connect button after successful connection
+        walletSection.classList.add("hidden");
         statusEl.textContent = "";
         contract = new ethers.Contract(CONTRACT_ADDRESS, StakeTokenABI, signer);
         tokenContract = new ethers.Contract(TOKEN_ADDRESS, ERC20ABI, signer);
-        // Initial updates
+        // Initial stats update
         refreshGeneralStats();
-        refreshPendingReward();
-        // Set intervals: general stats every 60 sec, pending every 5 sec
+        // Update general stats every 60 seconds
         setInterval(refreshGeneralStats, 60000);
-        setInterval(refreshPendingReward, 5000);
-      } catch (error) {
-        console.error("Wallet connection error:", error);
+      } catch (err) {
+        console.error("Error connecting wallet:", err);
         statusEl.textContent = "Error connecting wallet";
       }
     }
 
     // Check allowance and auto-approve if needed, then stake
     async function approveAndStake() {
-      const stakeAmountInput = document.getElementById("stake-amount").value;
-      if (!contract || !stakeAmountInput) return;
-      
-      const stakeAmount = ethers.utils.parseUnits(stakeAmountInput, 18);
-      const address = await signer.getAddress();
-      
+      const amountInput = document.getElementById("stake-amount").value;
+      if (!contract || !amountInput) return;
+      const stakeAmount = ethers.utils.parseUnits(amountInput, 18);
+      const userAddress = await signer.getAddress();
       try {
-        // Check current allowance
-        const currentAllowance = await tokenContract.allowance(address, CONTRACT_ADDRESS);
-        if (currentAllowance.lt(stakeAmount)) {
-          // Approve using full wallet balance as allowance
-          const walletBalance = await tokenContract.balanceOf(address);
-          statusEl.textContent = "Approving DBZ tokens...";
-          const txApprove = await tokenContract.approve(CONTRACT_ADDRESS, walletBalance);
+        const allowance = await tokenContract.allowance(userAddress, CONTRACT_ADDRESS);
+        if (allowance.lt(stakeAmount)) {
+          const walletBal = await tokenContract.balanceOf(userAddress);
+          statusEl.textContent = "Approving tokens...";
+          const txApprove = await tokenContract.approve(CONTRACT_ADDRESS, walletBal);
           await txApprove.wait();
         }
-        // Now stake tokens
         stakeTokens();
-      } catch (error) {
-        console.error("Deposit error:", error);
-        statusEl.textContent = "Error during deposit. Please try again.";
+      } catch (err) {
+        console.error("Deposit error:", err);
+        statusEl.textContent = "Deposit error. Please try again.";
       }
     }
 
     async function stakeTokens() {
-      const stakeAmountInput = document.getElementById("stake-amount").value;
-      if (!contract || !stakeAmountInput) return;
+      const amountInput = document.getElementById("stake-amount").value;
+      if (!contract || !amountInput) return;
       try {
-        statusEl.textContent = "Staking DBZ tokens...";
-        const amount = ethers.utils.parseUnits(stakeAmountInput, 18);
-        const tx = await contract.stakeTokens(amount);
+        statusEl.textContent = "Staking...";
+        const tx = await contract.stakeTokens(ethers.utils.parseUnits(amountInput, 18));
         await tx.wait();
         statusEl.textContent = "Stake successful!";
-        // Update stats 5 seconds after transaction
-        setTimeout(() => {
-          refreshGeneralStats();
-          refreshPendingReward();
-        }, 5000);
-      } catch (error) {
-        console.error("Error staking tokens:", error);
-        statusEl.textContent = "Error staking tokens";
+        setTimeout(refreshGeneralStats, 5000);
+      } catch (err) {
+        console.error("Error staking:", err);
+        statusEl.textContent = "Error staking";
       }
     }
 
     async function unstakeTokens() {
-      const unstakeAmountInput = document.getElementById("unstake-amount").value;
-      if (!contract || !unstakeAmountInput) return;
+      const unstakeInput = document.getElementById("unstake-amount").value;
+      if (!contract || !unstakeInput) return;
       try {
-        statusEl.textContent = "Unstaking DBZ tokens...";
-        const amount = ethers.utils.parseUnits(unstakeAmountInput, 18);
-        const tx = await contract.unstakeTokens(amount);
+        statusEl.textContent = "Unstaking...";
+        const tx = await contract.unstakeTokens(ethers.utils.parseUnits(unstakeInput, 18));
         await tx.wait();
         statusEl.textContent = "Unstake successful!";
-        // Update stats 5 sec after transaction
-        setTimeout(() => {
-          refreshGeneralStats();
-          refreshPendingReward();
-        }, 5000);
-      } catch (error) {
-        console.error("Error unstaking tokens:", error);
-        statusEl.textContent = "Error unstaking tokens";
+        setTimeout(refreshGeneralStats, 5000);
+      } catch (err) {
+        console.error("Error unstaking:", err);
+        statusEl.textContent = "Error unstaking";
       }
     }
 
@@ -379,99 +313,69 @@
         const tx = await contract.claimTokenReward();
         await tx.wait();
         statusEl.textContent = "Reward claimed!";
-        // Update stats 5 sec after transaction
-        setTimeout(() => {
-          refreshGeneralStats();
-          refreshPendingReward();
-        }, 5000);
-      } catch (error) {
-        console.error("Error claiming reward:", error);
+        setTimeout(refreshGeneralStats, 5000);
+      } catch (err) {
+        console.error("Error claiming reward:", err);
         statusEl.textContent = "Error claiming reward";
       }
     }
 
-    // Get DBZ token wallet balance
-    async function getWalletTokenBalance() {
-      const address = await signer.getAddress();
-      const balance = await tokenContract.balanceOf(address);
-      return roundToTwo(ethers.utils.formatUnits(balance, 18));
+    // Helper functions for stats
+    async function getWalletBalance() {
+      const addr = await signer.getAddress();
+      const bal = await tokenContract.balanceOf(addr);
+      return round2(ethers.utils.formatUnits(bal, 18));
     }
-
-    // Get staker info (staked amount and pending reward) from contract
-    async function getStakerInfo() {
-      const address = await signer.getAddress();
-      const staker = await contract.tokenStakers(address);
+    async function getStakedInfo() {
+      const addr = await signer.getAddress();
+      const staker = await contract.tokenStakers(addr);
       return {
-        amount: roundToTwo(ethers.utils.formatUnits(staker.amount, 18)),
-        pending: roundToTwo(ethers.utils.formatUnits(staker.pending, 18))
+        staked: round2(ethers.utils.formatUnits(staker.amount, 18))
       };
     }
-
-    // Get DBZ token balance held by the staking contract
-    async function getContractTokenBalance() {
-      const balance = await tokenContract.balanceOf(CONTRACT_ADDRESS);
-      return roundToTwo(ethers.utils.formatUnits(balance, 18));
-    }
-
-    // Compute APR: APR (%) = 3784320000000 / (total staked tokens)
     async function getAPR() {
       try {
         const totalStakedBN = await contract.totalTokenStaked();
         if (totalStakedBN.isZero()) return "0.00";
         const totalStaked = parseFloat(ethers.utils.formatUnits(totalStakedBN, 18));
-        const apr = 3784320000000 / totalStaked;
-        return parseFloat(apr).toFixed(2);
-      } catch (error) {
-        console.error("Error computing APR:", error);
+        return round2(3784320000000 / totalStaked);
+      } catch (err) {
+        console.error("Error calculating APR:", err);
         return "-";
       }
     }
 
-    // Refresh general stats (staked, wallet balance, APR) every 60 sec
     async function refreshGeneralStats() {
       if (!signer || !contract || !tokenContract) return;
       try {
-        const stakerInfo = await getStakerInfo();
-        const walletBal = await getWalletTokenBalance();
+        const stakedData = await getStakedInfo();
+        const walletBal = await getWalletBalance();
         const apr = await getAPR();
-        document.getElementById("staked-info").textContent = "Your Staked: " + stakerInfo.amount + " DBZ";
+        document.getElementById("staked-info").textContent = "Your Staked: " + stakedData.staked + " DBZ";
         document.getElementById("wallet-balance-info").textContent = "Your Wallet Balance: " + walletBal + " DBZ";
         document.getElementById("apr-info").textContent = "APR: " + apr + " %";
-      } catch (error) {
-        console.error("Error refreshing general stats:", error);
-      }
-    }
-
-    // Refresh pending reward only every 5 sec
-    async function refreshPendingReward() {
-      if (!signer || !contract || !tokenContract) return;
-      try {
-        const stakerInfo = await getStakerInfo();
-        document.getElementById("pending-info").textContent = "Pending Reward: " + stakerInfo.pending + " DBZ";
-      } catch (error) {
-        console.error("Error refreshing pending reward:", error);
+      } catch (err) {
+        console.error("Error refreshing stats:", err);
       }
     }
 
     // Set max stake input to wallet balance
     async function setMaxStake() {
       try {
-        const walletBal = await getWalletTokenBalance();
+        const walletBal = await getWalletBalance();
         document.getElementById("stake-amount").value = walletBal;
-      } catch (error) {
-        console.error("Error fetching wallet balance for max stake:", error);
+      } catch (err) {
+        console.error("Error setting max stake:", err);
       }
     }
 
-    // Set max unstake input to minimum of staked amount and contract token balance
+    // Set max unstake input to staked amount (from contract)
     async function setMaxUnstake() {
       try {
-        const stakerInfo = await getStakerInfo();
-        const contractBal = await getContractTokenBalance();
-        const maxUnstake = Math.min(parseFloat(stakerInfo.amount), parseFloat(contractBal));
-        document.getElementById("unstake-amount").value = maxUnstake.toFixed(2);
-      } catch (error) {
-        console.error("Error fetching amounts for max unstake:", error);
+        const stakedData = await getStakedInfo();
+        document.getElementById("unstake-amount").value = stakedData.staked;
+      } catch (err) {
+        console.error("Error setting max unstake:", err);
       }
     }
 
