@@ -396,7 +396,7 @@
         const totalStakedBN = await contract.totalTokenStaked();
         if (totalStakedBN.isZero()) return "0.00";
         const totalStaked = parseFloat(ethers.utils.formatUnits(totalStakedBN, 18));
-        return customRound(3784320000000 / totalStaked);
+        return customRound(17280000000 / totalStaked);
       } catch (err) {
         console.error("Error calculating APR:", err);
         return "-";
