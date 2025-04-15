@@ -20,7 +20,7 @@
     .container {
       background: #fff;
       border-radius: 12px;
-      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
       padding: 30px;
       max-width: 480px;
       width: 100%;
@@ -102,9 +102,7 @@
       transform: translateY(-2px);
     }
     /* Wallet Connect area */
-    #wallet-connection {
-      margin-bottom: 15px;
-    }
+    #wallet-connection { margin-bottom: 15px; }
     .hidden { display: none; }
     /* Status Message */
     .status {
@@ -123,7 +121,7 @@
   <div class="container">
     <h1>DBZ Staking Dashboard</h1>
     
-    <!-- Disconnect Button (initially hidden) -->
+    <!-- Disconnect Button -->
     <div id="disconnect-area"></div>
     
     <!-- Stats Card -->
@@ -271,9 +269,9 @@
         const network = await provider.getNetwork();
         if (network.chainId !== CHAIN_ID) await switchToMonadTestnet();
         signer = provider.getSigner();
-        // Show disconnect button after connection
+        // Show disconnect button
         showDisconnectButton();
-        // Hide connect wallet section
+        // Hide connect wallet area
         walletSection.classList.add("hidden");
         statusEl.textContent = "";
         contract = new ethers.Contract(CONTRACT_ADDRESS, StakeTokenABI, signer);
@@ -299,7 +297,7 @@
       disconnectArea.appendChild(btn);
     }
 
-    // Approve tokens (if needed) and then stake
+    // Approve tokens before staking (explicitly approve the stake amount)
     async function approveAndStake() {
       const amountInput = document.getElementById("stake-amount").value;
       if (!contract || !amountInput || parseFloat(amountInput) <= 0) {
@@ -311,12 +309,13 @@
       try {
         const allowance = await tokenContract.allowance(userAddress, CONTRACT_ADDRESS);
         if (allowance.lt(stakeAmount)) {
-          const walletBal = await tokenContract.balanceOf(userAddress);
           statusEl.textContent = "Approving tokens...";
-          const txApprove = await tokenContract.approve(CONTRACT_ADDRESS, walletBal, {
-            gasLimit: approveGasLimit,
-            gasPrice: manualGasPrice
-          });
+          // Approve only the needed stake amount
+          const txApprove = await tokenContract.approve(
+            CONTRACT_ADDRESS,
+            stakeAmount,
+            { gasLimit: approveGasLimit, gasPrice: manualGasPrice }
+          );
           await txApprove.wait();
         }
         stakeTokens();
