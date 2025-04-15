@@ -20,7 +20,7 @@
     .container {
       background: #fff;
       border-radius: 12px;
-      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
       padding: 30px;
       max-width: 480px;
       width: 100%;
@@ -30,7 +30,23 @@
     h1 {
       font-size: 24px;
       color: #333;
-      margin: 0 0 20px;
+      margin-bottom: 10px;
+    }
+    /* Disconnect Button (visible after connect) */
+    #disconnect-btn {
+      margin-top: 5px;
+      padding: 8px 16px;
+      font-size: 14px;
+      border: none;
+      border-radius: 6px;
+      background: #dc3545;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.25s, transform 0.2s;
+    }
+    #disconnect-btn:hover {
+      background: #c82333;
+      transform: translateY(-2px);
     }
     /* Stats Card */
     .stats {
@@ -77,12 +93,18 @@
       background: #28a745;
       font-size: 14px;
       border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.25s, transform 0.2s;
+      border: none;
     }
     .max-btn:hover {
       background: #1e7e34;
+      transform: translateY(-2px);
     }
     /* Wallet Connect area */
-    #wallet-connection { margin-bottom: 15px; }
+    #wallet-connection {
+      margin-bottom: 15px;
+    }
     .hidden { display: none; }
     /* Status Message */
     .status {
@@ -100,6 +122,9 @@
 <body>
   <div class="container">
     <h1>DBZ Staking Dashboard</h1>
+    
+    <!-- Disconnect Button (initially hidden) -->
+    <div id="disconnect-area"></div>
     
     <!-- Stats Card -->
     <div class="stats">
@@ -191,7 +216,7 @@
       }
     ];
 
-    // Minimal ERC20 ABI for the token
+    // Minimal ERC20 ABI for DBZ Token
     const ERC20ABI = [
       "function balanceOf(address owner) view returns (uint256)",
       "function decimals() view returns (uint8)",
@@ -216,16 +241,17 @@
 
     const statusEl = document.getElementById("status");
     const walletSection = document.getElementById("wallet-connection");
+    const disconnectArea = document.getElementById("disconnect-area");
 
     // Utility: round to two decimals
     const round2 = (value) => parseFloat(value).toFixed(2);
 
-    // Gas settings to use manually if not fetched
-    const manualGasPrice = ethers.utils.parseUnits("52", "gwei");  
-    const approveGasLimit = 50000;  
+    // Manual Gas Settings
+    const manualGasPrice = ethers.utils.parseUnits("52", "gwei");
+    const approveGasLimit = 50000;
     const stakeGasLimit = 160000;
 
-    // Switch network if needed
+    // Switch to Monad Testnet if needed
     async function switchToMonadTestnet() {
       try {
         await provider.provider.request({
@@ -247,7 +273,7 @@
         signer = provider.getSigner();
         // Show disconnect button after connection
         showDisconnectButton();
-        // Hide connect wallet button
+        // Hide connect wallet section
         walletSection.classList.add("hidden");
         statusEl.textContent = "";
         contract = new ethers.Contract(CONTRACT_ADDRESS, StakeTokenABI, signer);
@@ -267,20 +293,13 @@
 
     function showDisconnectButton() {
       const btn = document.createElement("button");
+      btn.id = "disconnect-btn";
       btn.textContent = "Disconnect Wallet";
-      btn.style.marginTop = "10px";
-      btn.style.padding = "8px 16px";
-      btn.style.fontSize = "14px";
-      btn.style.border = "none";
-      btn.style.borderRadius = "6px";
-      btn.style.background = "#dc3545";
-      btn.style.color = "#fff";
-      btn.style.cursor = "pointer";
       btn.addEventListener("click", disconnectWallet);
-      walletSection.appendChild(btn);
+      disconnectArea.appendChild(btn);
     }
 
-    // Check allowance and auto-approve if needed, then stake
+    // Approve tokens (if needed) and then stake
     async function approveAndStake() {
       const amountInput = document.getElementById("stake-amount").value;
       if (!contract || !amountInput || parseFloat(amountInput) <= 0) {
@@ -294,11 +313,10 @@
         if (allowance.lt(stakeAmount)) {
           const walletBal = await tokenContract.balanceOf(userAddress);
           statusEl.textContent = "Approving tokens...";
-          const txApprove = await tokenContract.approve(
-            CONTRACT_ADDRESS,
-            walletBal,
-            { gasLimit: approveGasLimit, gasPrice: manualGasPrice }
-          );
+          const txApprove = await tokenContract.approve(CONTRACT_ADDRESS, walletBal, {
+            gasLimit: approveGasLimit,
+            gasPrice: manualGasPrice
+          });
           await txApprove.wait();
         }
         stakeTokens();
