@@ -113,7 +113,7 @@
     .hidden {
       display: none;
     }
-    /* Status message */
+    /* Status message styling */
     .status {
       text-align: center;
       font-weight: 600;
@@ -132,7 +132,7 @@
       }
     }
   </style>
-  <!-- CDN Libraries -->
+  <!-- CDN Libraries: ethers.js, Web3Modal, WalletConnectProvider -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <script src="https://unpkg.com/web3modal@1.9.8/dist/index.js"></script>
   <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
@@ -161,6 +161,7 @@
       <input type="number" id="stake-amount" placeholder="Enter amount to stake" />
       <button class="max-btn" id="stake-max-btn">Max</button>
       <br />
+      <!-- Single Stake button (auto handles approval if necessary) -->
       <button id="stake-btn">Stake</button>
     </div>
     <!-- Unstake Section -->
@@ -261,6 +262,11 @@
     const statusEl = document.getElementById("status");
     const walletConnectSection = document.getElementById("wallet-connection");
 
+    // Helper function to round to two decimals (as string)
+    function roundToTwo(value) {
+      return parseFloat(value).toFixed(2);
+    }
+
     // Attempt network switch to Monad Testnet if needed
     async function switchToMonadTestnet() {
       try {
@@ -283,14 +289,17 @@
           await switchToMonadTestnet();
         }
         signer = provider.getSigner();
-        // Hide wallet connect button after connection
+        // Hide the wallet connect section after successful connection
         walletConnectSection.classList.add("hidden");
         statusEl.textContent = "";
         contract = new ethers.Contract(CONTRACT_ADDRESS, StakeTokenABI, signer);
         tokenContract = new ethers.Contract(TOKEN_ADDRESS, ERC20ABI, signer);
-        refreshStats();
-        // Auto-refresh stats every 30 seconds
-        setInterval(refreshStats, 30000);
+        // Initial updates
+        refreshGeneralStats();
+        refreshPendingReward();
+        // Set intervals: general stats every 60 sec, pending every 5 sec
+        setInterval(refreshGeneralStats, 60000);
+        setInterval(refreshPendingReward, 5000);
       } catch (error) {
         console.error("Wallet connection error:", error);
         statusEl.textContent = "Error connecting wallet";
@@ -305,17 +314,22 @@
       const stakeAmount = ethers.utils.parseUnits(stakeAmountInput, 18);
       const address = await signer.getAddress();
       
-      // Get current allowance
-      const currentAllowance = await tokenContract.allowance(address, CONTRACT_ADDRESS);
-      if (currentAllowance.lt(stakeAmount)) {
-        // Approve using full wallet balance as allowance
-        const walletBalance = await tokenContract.balanceOf(address);
-        statusEl.textContent = "Approving DBZ tokens...";
-        const txApprove = await tokenContract.approve(CONTRACT_ADDRESS, walletBalance);
-        await txApprove.wait();
+      try {
+        // Check current allowance
+        const currentAllowance = await tokenContract.allowance(address, CONTRACT_ADDRESS);
+        if (currentAllowance.lt(stakeAmount)) {
+          // Approve using full wallet balance as allowance
+          const walletBalance = await tokenContract.balanceOf(address);
+          statusEl.textContent = "Approving DBZ tokens...";
+          const txApprove = await tokenContract.approve(CONTRACT_ADDRESS, walletBalance);
+          await txApprove.wait();
+        }
+        // Now stake tokens
+        stakeTokens();
+      } catch (error) {
+        console.error("Deposit error:", error);
+        statusEl.textContent = "Error during deposit. Please try again.";
       }
-      // Stake tokens
-      stakeTokens();
     }
 
     async function stakeTokens() {
@@ -327,7 +341,11 @@
         const tx = await contract.stakeTokens(amount);
         await tx.wait();
         statusEl.textContent = "Stake successful!";
-        refreshStats();
+        // Update stats 5 seconds after transaction
+        setTimeout(() => {
+          refreshGeneralStats();
+          refreshPendingReward();
+        }, 5000);
       } catch (error) {
         console.error("Error staking tokens:", error);
         statusEl.textContent = "Error staking tokens";
@@ -343,7 +361,11 @@
         const tx = await contract.unstakeTokens(amount);
         await tx.wait();
         statusEl.textContent = "Unstake successful!";
-        refreshStats();
+        // Update stats 5 sec after transaction
+        setTimeout(() => {
+          refreshGeneralStats();
+          refreshPendingReward();
+        }, 5000);
       } catch (error) {
         console.error("Error unstaking tokens:", error);
         statusEl.textContent = "Error unstaking tokens";
@@ -357,7 +379,11 @@
         const tx = await contract.claimTokenReward();
         await tx.wait();
         statusEl.textContent = "Reward claimed!";
-        refreshStats();
+        // Update stats 5 sec after transaction
+        setTimeout(() => {
+          refreshGeneralStats();
+          refreshPendingReward();
+        }, 5000);
       } catch (error) {
         console.error("Error claiming reward:", error);
         statusEl.textContent = "Error claiming reward";
@@ -368,7 +394,7 @@
     async function getWalletTokenBalance() {
       const address = await signer.getAddress();
       const balance = await tokenContract.balanceOf(address);
-      return ethers.utils.formatUnits(balance, 18);
+      return roundToTwo(ethers.utils.formatUnits(balance, 18));
     }
 
     // Get staker info (staked amount and pending reward) from contract
@@ -376,63 +402,74 @@
       const address = await signer.getAddress();
       const staker = await contract.tokenStakers(address);
       return {
-        amount: ethers.utils.formatUnits(staker.amount, 18),
-        pending: ethers.utils.formatUnits(staker.pending, 18)
+        amount: roundToTwo(ethers.utils.formatUnits(staker.amount, 18)),
+        pending: roundToTwo(ethers.utils.formatUnits(staker.pending, 18))
       };
     }
 
     // Get DBZ token balance held by the staking contract
     async function getContractTokenBalance() {
       const balance = await tokenContract.balanceOf(CONTRACT_ADDRESS);
-      return ethers.utils.formatUnits(balance, 18);
+      return roundToTwo(ethers.utils.formatUnits(balance, 18));
     }
 
     // Compute APR: APR (%) = 3784320000000 / (total staked tokens)
     async function getAPR() {
       try {
         const totalStakedBN = await contract.totalTokenStaked();
-        if (totalStakedBN.isZero()) return "0";
+        if (totalStakedBN.isZero()) return "0.00";
         const totalStaked = parseFloat(ethers.utils.formatUnits(totalStakedBN, 18));
         const apr = 3784320000000 / totalStaked;
-        return apr.toFixed(2);
+        return parseFloat(apr).toFixed(2);
       } catch (error) {
         console.error("Error computing APR:", error);
         return "-";
       }
     }
 
-    async function refreshStats() {
+    // Refresh general stats (staked, wallet balance, APR) every 60 sec
+    async function refreshGeneralStats() {
       if (!signer || !contract || !tokenContract) return;
       try {
         const stakerInfo = await getStakerInfo();
         const walletBal = await getWalletTokenBalance();
         const apr = await getAPR();
         document.getElementById("staked-info").textContent = "Your Staked: " + stakerInfo.amount + " DBZ";
-        document.getElementById("pending-info").textContent = "Pending Reward: " + stakerInfo.pending + " DBZ";
         document.getElementById("wallet-balance-info").textContent = "Your Wallet Balance: " + walletBal + " DBZ";
         document.getElementById("apr-info").textContent = "APR: " + apr + " %";
       } catch (error) {
-        console.error("Error refreshing stats:", error);
+        console.error("Error refreshing general stats:", error);
       }
     }
 
-    // Set max stake to wallet balance
+    // Refresh pending reward only every 5 sec
+    async function refreshPendingReward() {
+      if (!signer || !contract || !tokenContract) return;
+      try {
+        const stakerInfo = await getStakerInfo();
+        document.getElementById("pending-info").textContent = "Pending Reward: " + stakerInfo.pending + " DBZ";
+      } catch (error) {
+        console.error("Error refreshing pending reward:", error);
+      }
+    }
+
+    // Set max stake input to wallet balance
     async function setMaxStake() {
       try {
         const walletBal = await getWalletTokenBalance();
-        document.getElementById("stake-amount").value = parseFloat(walletBal).toFixed(4);
+        document.getElementById("stake-amount").value = walletBal;
       } catch (error) {
         console.error("Error fetching wallet balance for max stake:", error);
       }
     }
 
-    // Set max unstake to minimum of staked amount and contract token balance
+    // Set max unstake input to minimum of staked amount and contract token balance
     async function setMaxUnstake() {
       try {
         const stakerInfo = await getStakerInfo();
         const contractBal = await getContractTokenBalance();
         const maxUnstake = Math.min(parseFloat(stakerInfo.amount), parseFloat(contractBal));
-        document.getElementById("unstake-amount").value = maxUnstake.toFixed(4);
+        document.getElementById("unstake-amount").value = maxUnstake.toFixed(2);
       } catch (error) {
         console.error("Error fetching amounts for max unstake:", error);
       }
@@ -446,7 +483,7 @@
     document.getElementById("stake-max-btn").addEventListener("click", setMaxStake);
     document.getElementById("unstake-max-btn").addEventListener("click", setMaxUnstake);
 
-    // Auto-connect if cached
+    // Auto-connect if wallet was previously connected
     if (web3Modal.cachedProvider) {
       connectWallet();
     }
