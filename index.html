@@ -129,6 +129,7 @@
       <p id="staked-info">Your Staked: - DBZ</p>
       <p id="wallet-balance-info">Your Wallet Balance: - DBZ</p>
       <p id="apr-info">APR: - %</p>
+      <p id="estimated-profit">Estimated Profit: - DBZ</p>
       <p id="lock-countdown">Lock Countdown: -</p>
     </div>
     
@@ -165,14 +166,14 @@
 
   <script>
     // Network & Contract Settings
-    const CONTRACT_ADDRESS = "0x28eBAcAEe96c43a4eCB1F73469eF46E12A42565b"; // Updated stake contract address
+    const CONTRACT_ADDRESS = "0x28eBAcAEe96c43a4eCB1F73469eF46E12A42565b"; // Stake contract address
     const RPC_URL = "https://rpc-testnet.monad.xyz";
     const CHAIN_ID = 10143; // Monad Testnet
 
     // DBZ Token Address
-    const TOKEN_ADDRESS = "0xBDD06C151F94817B6B316C1a05e14282FA0Bd44b"; // Updated token address
+    const TOKEN_ADDRESS = "0xBDD06C151F94817B6B316C1a05e14282FA0Bd44b";
 
-    // Minimal ABI for the staking contract (with lock functionality)
+    // Minimal ABI for the staking contract (including lock functionality)
     const StakeTokenABI = [
       {
         "inputs": [{"internalType": "uint256","name": "amount","type": "uint256"}],
@@ -249,11 +250,6 @@
       return (parseFloat(rounded) - 0.01).toFixed(2);
     }
 
-    // Manual Gas Settings
-    const manualGasPrice = ethers.utils.parseUnits("52", "gwei");
-    const approveGasLimit = 50000;
-    const stakeGasLimit = 160000;
-
     // Switch to Monad Testnet if needed
     async function switchToMonadTestnet() {
       try {
@@ -318,8 +314,7 @@
           statusEl.textContent = "Approving tokens...";
           const txApprove = await tokenContract.approve(
             CONTRACT_ADDRESS,
-            stakeAmount,
-            { gasLimit: approveGasLimit, gasPrice: manualGasPrice }
+            stakeAmount
           );
           await txApprove.wait();
         }
@@ -336,8 +331,7 @@
       try {
         statusEl.textContent = "Staking...";
         const tx = await contract.stakeTokens(
-          ethers.utils.parseUnits(amountInput, 18),
-          { gasLimit: stakeGasLimit, gasPrice: manualGasPrice }
+          ethers.utils.parseUnits(amountInput, 18)
         );
         await tx.wait();
         statusEl.textContent = "Stake successful!";
@@ -391,9 +385,9 @@
     async function getStakedInfo() {
       const addr = await signer.getAddress();
       const staker = await contract.tokenStakers(addr);
-      return { 
+      return {
         staked: customRound(ethers.utils.formatUnits(staker.amount, 18)),
-        unlockTime: staker.unlockTime.toNumber() // assume unlockTime in seconds
+        unlockTime: staker.unlockTime.toNumber()
       };
     }
 
@@ -402,11 +396,25 @@
         const totalStakedBN = await contract.totalTokenStaked();
         if (totalStakedBN.isZero()) return "0.00";
         const totalStaked = parseFloat(ethers.utils.formatUnits(totalStakedBN, 18));
-        return customRound(3784320000000 / totalStaked);
+        return customRound(6307200000000 / totalStaked);
       } catch (err) {
         console.error("Error calculating APR:", err);
         return "-";
       }
+    }
+
+    // Estimated Profit Calculation
+    // Approximation: stakeTime = unlockTime - LOCK_DURATION (3 days = 259200 seconds)
+    // elapsed = currentTime - stakeTime, then estimatedProfit = staked * (APR / 100) * (elapsed / 31536000)
+    async function getEstimatedProfit(staked, unlockTime, apr) {
+      const LOCK_DURATION = 259200; // 3 days in seconds
+      let stakeTime = unlockTime > LOCK_DURATION ? unlockTime - LOCK_DURATION : 0;
+      let currentTime = Math.floor(Date.now() / 1000);
+      let elapsed = currentTime - stakeTime;
+      if (elapsed < 0) elapsed = 0;
+      let aprNum = parseFloat(apr);
+      let profit = parseFloat(staked) * (aprNum / 100) * (elapsed / 31536000);
+      return customRound(profit);
     }
 
     async function refreshGeneralStats() {
@@ -415,9 +423,14 @@
         const stakedData = await getStakedInfo();
         const walletBal = await getWalletBalance();
         const apr = await getAPR();
+        let estimatedProfit = "0.00";
+        if(parseFloat(stakedData.staked) > 0) {
+          estimatedProfit = await getEstimatedProfit(stakedData.staked, stakedData.unlockTime, apr);
+        }
         document.getElementById("staked-info").textContent = "Your Staked: " + stakedData.staked + " DBZ";
         document.getElementById("wallet-balance-info").textContent = "Your Wallet Balance: " + walletBal + " DBZ";
         document.getElementById("apr-info").textContent = "APR: " + apr + " %";
+        document.getElementById("estimated-profit").textContent = "Estimated Profit: " + estimatedProfit + " DBZ";
       } catch (err) {
         console.error("Error refreshing stats:", err);
       }
@@ -442,7 +455,7 @@
       }
     }
 
-    // Helper function to format seconds into "D days, HH:MM:SS"
+    // Helper function to format seconds as "D days, HH:MM:SS"
     function formatTime(seconds) {
       const d = Math.floor(seconds / (3600 * 24));
       const h = Math.floor((seconds % (3600 * 24)) / 3600);
