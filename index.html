@@ -20,7 +20,7 @@
     .container {
       background: #fff;
       border-radius: 12px;
-      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
       padding: 30px;
       max-width: 480px;
       width: 100%;
@@ -82,8 +82,12 @@
       background: #1e7e34;
     }
     /* Wallet Connect area */
-    #wallet-connection { margin-bottom: 15px; }
-    .hidden { display: none; }
+    #wallet-connection {
+      margin-bottom: 15px;
+    }
+    .hidden {
+      display: none;
+    }
     /* Status Message */
     .status {
       font-size: 14px;
@@ -108,7 +112,7 @@
       <p id="apr-info">APR: - %</p>
     </div>
     
-    <!-- Wallet Connect Button (hidden after connection) -->
+    <!-- Wallet Connection Area -->
     <div id="wallet-connection">
       <button id="connect-wallet-btn">Connect Wallet</button>
     </div>
@@ -220,7 +224,7 @@
     // Utility: round to two decimals
     const round2 = (value) => parseFloat(value).toFixed(2);
 
-    // Switch to Monad Testnet if necessary
+    // Switch to Monad Testnet if needed
     async function switchToMonadTestnet() {
       try {
         await provider.provider.request({
@@ -240,14 +244,14 @@
         const network = await provider.getNetwork();
         if (network.chainId !== CHAIN_ID) await switchToMonadTestnet();
         signer = provider.getSigner();
-        // Hide connect button after successful connection
+        // Show disconnect button after connection
+        showDisconnectButton();
+        // Hide connect wallet button
         walletSection.classList.add("hidden");
         statusEl.textContent = "";
         contract = new ethers.Contract(CONTRACT_ADDRESS, StakeTokenABI, signer);
         tokenContract = new ethers.Contract(TOKEN_ADDRESS, ERC20ABI, signer);
-        // Initial stats update
         refreshGeneralStats();
-        // Update general stats every 60 seconds
         setInterval(refreshGeneralStats, 60000);
       } catch (err) {
         console.error("Error connecting wallet:", err);
@@ -255,10 +259,34 @@
       }
     }
 
+    function disconnectWallet() {
+      web3Modal.clearCachedProvider();
+      location.reload();
+    }
+
+    function showDisconnectButton() {
+      // Create disconnect button
+      const btn = document.createElement("button");
+      btn.textContent = "Disconnect Wallet";
+      btn.style.marginTop = "10px";
+      btn.style.padding = "8px 16px";
+      btn.style.fontSize = "14px";
+      btn.style.border = "none";
+      btn.style.borderRadius = "6px";
+      btn.style.background = "#dc3545";
+      btn.style.color = "#fff";
+      btn.style.cursor = "pointer";
+      btn.addEventListener("click", disconnectWallet);
+      walletSection.appendChild(btn);
+    }
+
     // Check allowance and auto-approve if needed, then stake
     async function approveAndStake() {
       const amountInput = document.getElementById("stake-amount").value;
-      if (!contract || !amountInput) return;
+      if (!contract || !amountInput || parseFloat(amountInput) <= 0) {
+        statusEl.textContent = "Enter a valid stake amount.";
+        return;
+      }
       const stakeAmount = ethers.utils.parseUnits(amountInput, 18);
       const userAddress = await signer.getAddress();
       try {
@@ -293,7 +321,10 @@
 
     async function unstakeTokens() {
       const unstakeInput = document.getElementById("unstake-amount").value;
-      if (!contract || !unstakeInput) return;
+      if (!contract || !unstakeInput || parseFloat(unstakeInput) <= 0) {
+        statusEl.textContent = "Enter a valid unstake amount.";
+        return;
+      }
       try {
         statusEl.textContent = "Unstaking...";
         const tx = await contract.unstakeTokens(ethers.utils.parseUnits(unstakeInput, 18));
@@ -320,19 +351,18 @@
       }
     }
 
-    // Helper functions for stats
     async function getWalletBalance() {
       const addr = await signer.getAddress();
       const bal = await tokenContract.balanceOf(addr);
       return round2(ethers.utils.formatUnits(bal, 18));
     }
+
     async function getStakedInfo() {
       const addr = await signer.getAddress();
       const staker = await contract.tokenStakers(addr);
-      return {
-        staked: round2(ethers.utils.formatUnits(staker.amount, 18))
-      };
+      return { staked: round2(ethers.utils.formatUnits(staker.amount, 18)) };
     }
+
     async function getAPR() {
       try {
         const totalStakedBN = await contract.totalTokenStaked();
@@ -359,7 +389,6 @@
       }
     }
 
-    // Set max stake input to wallet balance
     async function setMaxStake() {
       try {
         const walletBal = await getWalletBalance();
@@ -369,7 +398,6 @@
       }
     }
 
-    // Set max unstake input to staked amount (from contract)
     async function setMaxUnstake() {
       try {
         const stakedData = await getStakedInfo();
@@ -387,7 +415,6 @@
     document.getElementById("stake-max-btn").addEventListener("click", setMaxStake);
     document.getElementById("unstake-max-btn").addEventListener("click", setMaxUnstake);
 
-    // Auto-connect if wallet was previously connected
     if (web3Modal.cachedProvider) {
       connectWallet();
     }
