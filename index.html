@@ -20,7 +20,7 @@
     .container {
       background: #fff;
       border-radius: 12px;
-      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
       padding: 30px;
       max-width: 480px;
       width: 100%;
@@ -82,12 +82,8 @@
       background: #1e7e34;
     }
     /* Wallet Connect area */
-    #wallet-connection {
-      margin-bottom: 15px;
-    }
-    .hidden {
-      display: none;
-    }
+    #wallet-connection { margin-bottom: 15px; }
+    .hidden { display: none; }
     /* Status Message */
     .status {
       font-size: 14px;
@@ -224,7 +220,12 @@
     // Utility: round to two decimals
     const round2 = (value) => parseFloat(value).toFixed(2);
 
-    // Switch to Monad Testnet if needed
+    // Gas settings to use manually if not fetched
+    const manualGasPrice = ethers.utils.parseUnits("52", "gwei");  
+    const approveGasLimit = 50000;  
+    const stakeGasLimit = 160000;
+
+    // Switch network if needed
     async function switchToMonadTestnet() {
       try {
         await provider.provider.request({
@@ -265,7 +266,6 @@
     }
 
     function showDisconnectButton() {
-      // Create disconnect button
       const btn = document.createElement("button");
       btn.textContent = "Disconnect Wallet";
       btn.style.marginTop = "10px";
@@ -294,7 +294,11 @@
         if (allowance.lt(stakeAmount)) {
           const walletBal = await tokenContract.balanceOf(userAddress);
           statusEl.textContent = "Approving tokens...";
-          const txApprove = await tokenContract.approve(CONTRACT_ADDRESS, walletBal);
+          const txApprove = await tokenContract.approve(
+            CONTRACT_ADDRESS,
+            walletBal,
+            { gasLimit: approveGasLimit, gasPrice: manualGasPrice }
+          );
           await txApprove.wait();
         }
         stakeTokens();
@@ -309,7 +313,10 @@
       if (!contract || !amountInput) return;
       try {
         statusEl.textContent = "Staking...";
-        const tx = await contract.stakeTokens(ethers.utils.parseUnits(amountInput, 18));
+        const tx = await contract.stakeTokens(
+          ethers.utils.parseUnits(amountInput, 18),
+          { gasLimit: stakeGasLimit, gasPrice: manualGasPrice }
+        );
         await tx.wait();
         statusEl.textContent = "Stake successful!";
         setTimeout(refreshGeneralStats, 5000);
@@ -327,7 +334,9 @@
       }
       try {
         statusEl.textContent = "Unstaking...";
-        const tx = await contract.unstakeTokens(ethers.utils.parseUnits(unstakeInput, 18));
+        const tx = await contract.unstakeTokens(
+          ethers.utils.parseUnits(unstakeInput, 18)
+        );
         await tx.wait();
         statusEl.textContent = "Unstake successful!";
         setTimeout(refreshGeneralStats, 5000);
